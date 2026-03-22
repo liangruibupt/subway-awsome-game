@@ -58,6 +58,7 @@ export class SimulationEngine {
   private stations = new Map<string, StationData>();
   private trains = new Map<string, TrainInternal>();
   private passengerData = new Map<string, StationPassengerData>();
+  private trackPaths = new Map<string, { x: number; y: number }[]>();
   private timeMinutes = 0; // minutes elapsed from 6 AM
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -82,6 +83,11 @@ export class SimulationEngine {
 
   setTime(minutesFrom6AM: number): void {
     this.timeMinutes = minutesFrom6AM;
+  }
+
+  setTrackPath(stationAId: string, stationBId: string, path: { x: number; y: number }[]): void {
+    this.trackPaths.set(`${stationAId}→${stationBId}`, path);
+    this.trackPaths.set(`${stationBId}→${stationAId}`, [...path].reverse());
   }
 
   addTrain(config: { id: string; lineId: string; capacity: number }): void {
@@ -186,6 +192,7 @@ export class SimulationEngine {
     this.stations.clear();
     this.trains.clear();
     this.passengerData.clear();
+    this.trackPaths.clear();
     this.timeMinutes = 0;
   }
 
@@ -242,7 +249,8 @@ export class SimulationEngine {
 
     const dx = stationB.x - stationA.x;
     const dy = stationB.y - stationA.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const path = this.getTrackPath(train);
+    const distance = path ? this.getPathLength(path) : Math.sqrt(dx * dx + dy * dy);
     if (distance === 0) return;
 
     train.progress += (train.speed * deltaSeconds) / distance;
@@ -273,15 +281,53 @@ export class SimulationEngine {
     }
   }
 
-  private interpolatePosition(train: TrainInternal): { x: number; y: number } {
+  private getTrackPath(train: TrainInternal): { x: number; y: number }[] | null {
     const line = this.lines.get(train.lineId);
-    if (!line) return { x: 0, y: 0 };
-    const stationA = this.stations.get(line.stationIds[train.currentStationIndex]);
-    const stationB = this.stations.get(line.stationIds[train.nextStationIndex]);
-    if (!stationA || !stationB) return { x: 0, y: 0 };
-    return {
-      x: stationA.x + (stationB.x - stationA.x) * train.progress,
-      y: stationA.y + (stationB.y - stationA.y) * train.progress,
-    };
+    if (!line) return null;
+    const fromId = line.stationIds[train.currentStationIndex];
+    const toId = line.stationIds[train.nextStationIndex];
+    return this.trackPaths.get(`${fromId}→${toId}`) ?? null;
+  }
+
+  private getPathLength(path: { x: number; y: number }[]): number {
+    let len = 0;
+    for (let i = 1; i < path.length; i++) {
+      len += Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].y - path[i - 1].y);
+    }
+    return len;
+  }
+
+  private interpolatePosition(train: TrainInternal): { x: number; y: number } {
+    const path = this.getTrackPath(train);
+    if (!path || path.length < 2) {
+      // Fallback: straight line
+      const line = this.lines.get(train.lineId);
+      if (!line) return { x: 0, y: 0 };
+      const stA = this.stations.get(line.stationIds[train.currentStationIndex]);
+      const stB = this.stations.get(line.stationIds[train.nextStationIndex]);
+      if (!stA || !stB) return { x: 0, y: 0 };
+      return {
+        x: stA.x + (stB.x - stA.x) * train.progress,
+        y: stA.y + (stB.y - stA.y) * train.progress,
+      };
+    }
+
+    const totalLen = this.getPathLength(path);
+    const targetDist = totalLen * train.progress;
+
+    let traveled = 0;
+    for (let i = 1; i < path.length; i++) {
+      const segLen = Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].y - path[i - 1].y);
+      if (traveled + segLen >= targetDist) {
+        const t = segLen > 0 ? (targetDist - traveled) / segLen : 0;
+        return {
+          x: path[i - 1].x + (path[i].x - path[i - 1].x) * t,
+          y: path[i - 1].y + (path[i].y - path[i - 1].y) * t,
+        };
+      }
+      traveled += segLen;
+    }
+
+    return path[path.length - 1];
   }
 }

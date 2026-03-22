@@ -121,6 +121,9 @@ export function GameCanvas() {
         for (const line of mapState.lines) {
           simEngine.setLine({ id: line.id, name: line.name, color: line.color, stationIds: line.stationIds });
         }
+        for (const track of mapState.tracks) {
+          simEngine.setTrackPath(track.stationAId, track.stationBId, track.path);
+        }
 
         const stationMap = new Map<string, { x: number; y: number; name: string }>();
         for (const s of mapState.stations) {
