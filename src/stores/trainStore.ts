@@ -7,14 +7,17 @@ const STANDARD_CAPACITY = 60;
 const WIDEBODY_CAPACITY = 80;
 const MAX_CARRIAGES = 7;
 
+const DEFAULT_STYLE: TrainStyle = { bodyColor: '#0984e3', pattern: 'solid', accentColor: '#ffd93d' };
+
 interface TrainState {
   trains: Train[];
   createTrain: (head: TrainHead) => void;
   deleteTrain: (id: string) => void;
-  addCarriage: (trainId: string, carriage: Carriage) => void;
+  addCarriage: (trainId: string, carriage: Omit<Carriage, 'style'>) => void;
   removeCarriage: (trainId: string, index: number) => void;
   reorderCarriages: (trainId: string, fromIndex: number, toIndex: number) => void;
   updateStyle: (trainId: string, style: TrainStyle) => void;
+  updateCarriageStyle: (trainId: string, carriageIndex: number, style: TrainStyle) => void;
   assignToLine: (trainId: string, lineId: string) => void;
   getTrainCapacity: (trainId: string) => number;
   reset: () => void;
@@ -23,13 +26,14 @@ interface TrainState {
 export const useTrainStore = create<TrainState>((set, get) => ({
   trains: [],
   createTrain: (head) => set(state => ({
-    trains: [...state.trains, { id: generateId(), lineId: '', head, carriages: [], style: { bodyColor: '#0984e3', pattern: 'solid', accentColor: '#ffd93d' } }],
+    trains: [...state.trains, { id: generateId(), lineId: '', head, carriages: [], style: { ...DEFAULT_STYLE } }],
   })),
   deleteTrain: (id) => set(state => ({ trains: state.trains.filter(t => t.id !== id) })),
-  addCarriage: (trainId, carriage) => set(state => ({
+  addCarriage: (trainId, carriageBase) => set(state => ({
     trains: state.trains.map(t => {
       if (t.id !== trainId || t.carriages.length >= MAX_CARRIAGES) return t;
-      return { ...t, carriages: [...t.carriages, carriage] };
+      const newCarriage: Carriage = { ...carriageBase, style: { ...t.style } };
+      return { ...t, carriages: [...t.carriages, newCarriage] };
     }),
   })),
   removeCarriage: (trainId, index) => set(state => ({
@@ -48,6 +52,13 @@ export const useTrainStore = create<TrainState>((set, get) => ({
     }),
   })),
   updateStyle: (trainId, style) => set(state => ({ trains: state.trains.map(t => t.id === trainId ? { ...t, style } : t) })),
+  updateCarriageStyle: (trainId, carriageIndex, style) => set(state => ({
+    trains: state.trains.map(t => {
+      if (t.id !== trainId) return t;
+      const carriages = t.carriages.map((c, i) => i === carriageIndex ? { ...c, style } : c);
+      return { ...t, carriages };
+    }),
+  })),
   assignToLine: (trainId, lineId) => set(state => ({ trains: state.trains.map(t => t.id === trainId ? { ...t, lineId } : t) })),
   getTrainCapacity: (trainId) => {
     const train = get().trains.find(t => t.id === trainId);

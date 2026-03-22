@@ -32,6 +32,7 @@ export interface TrainHead {
 export interface Carriage {
   type: 'standard' | 'widebody';
   city: string;
+  style: TrainStyle;
 }
 
 export interface TrainStyle {
