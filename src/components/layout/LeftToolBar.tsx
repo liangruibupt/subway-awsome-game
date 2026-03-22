@@ -2,11 +2,11 @@ import { useUIStore } from '../../stores/uiStore';
 import type { TrackTool } from '../../types';
 
 const TRACK_TOOLS: { tool: TrackTool; icon: string; label: string }[] = [
-  { tool: 'station', icon: '⬡', label: 'STN' },
-  { tool: 'connect', icon: '━', label: 'CON' },
-  { tool: 'edit', icon: '✎', label: 'EDT' },
-  { tool: 'delete', icon: '✕', label: 'DEL' },
-  { tool: 'pan', icon: '✥', label: 'PAN' },
+  { tool: 'station', icon: '⬡', label: 'Station' },
+  { tool: 'connect', icon: '━', label: 'Connect' },
+  { tool: 'edit', icon: '✎', label: 'Edit' },
+  { tool: 'delete', icon: '✕', label: 'Delete' },
+  { tool: 'pan', icon: '✥', label: 'Move' },
 ];
 
 export function LeftToolBar() {

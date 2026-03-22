@@ -34,7 +34,7 @@ body {
 /* ── Main area (3-column) ── */
 .main-area {
   display: grid;
-  grid-template-columns: 50px 1fr 180px;
+  grid-template-columns: 72px 1fr 180px;
   overflow: hidden;
   min-height: 0;
 }
@@ -125,8 +125,8 @@ body {
   background: transparent;
   border: 1px solid transparent;
   color: #636e72;
-  width: 42px;
-  height: 42px;
+  width: 62px;
+  height: 50px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -134,7 +134,7 @@ body {
   cursor: pointer;
   border-radius: 4px;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
-  gap: 2px;
+  gap: 3px;
 }
 
 .tool-btn:hover {
@@ -155,7 +155,7 @@ body {
 }
 
 .tool-label {
-  font-size: 7px;
+  font-size: 8px;
   letter-spacing: 0.5px;
   line-height: 1;
 }
