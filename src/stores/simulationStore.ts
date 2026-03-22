@@ -1,12 +1,15 @@
 import { create } from 'zustand';
 import type { SimulationState } from '../types';
+import type { TrainRunState } from '../engine/SimulationEngine';
 
 interface SimStore extends SimulationState {
+  trainRunStates: Record<string, TrainRunState>;
   setSpeed: (speed: 1 | 2 | 4) => void;
   togglePause: () => void;
   tick: (deltaMinutes: number) => void;
   addPassengers: (lineId: string, count: number) => void;
   recordArrival: (lineId: string, onTime: boolean) => void;
+  setTrainRunStates: (states: TrainRunState[]) => void;
   reset: () => void;
 }
 
@@ -17,6 +20,7 @@ const initialState: SimulationState = {
 
 export const useSimulationStore = create<SimStore>((set) => ({
   ...initialState,
+  trainRunStates: {},
   setSpeed: (speed) => set({ speed }),
   togglePause: () => set(state => ({ paused: !state.paused })),
   tick: (deltaMinutes) => set(state => {
@@ -39,5 +43,8 @@ export const useSimulationStore = create<SimStore>((set) => ({
     const onTimeRate = totalArrivals > 0 ? (totalOnTime / totalArrivals) * 100 : 100;
     return { stats: { ...state.stats, onTimeRate, byLine } };
   }),
-  reset: () => set(initialState),
+  setTrainRunStates: (states) => set({
+    trainRunStates: Object.fromEntries(states.map(s => [s.id, s])),
+  }),
+  reset: () => set({ ...initialState, trainRunStates: {} }),
 }));

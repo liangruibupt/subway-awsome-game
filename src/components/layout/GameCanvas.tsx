@@ -6,8 +6,12 @@ import { StationRenderer } from '../../engine/StationRenderer';
 import { TrackRenderer } from '../../engine/TrackRenderer';
 import { InteractionManager } from '../../engine/InteractionManager';
 import { AssemblyRenderer } from '../../engine/AssemblyRenderer';
+import { SimulationEngine } from '../../engine/SimulationEngine';
+import { TrainSpriteRenderer } from '../../engine/TrainSpriteRenderer';
 import { StationNameDialog } from '../track-design/StationNameDialog';
 import { useMapStore } from '../../stores/mapStore';
+import { useTrainStore } from '../../stores/trainStore';
+import { useSimulationStore } from '../../stores/simulationStore';
 import { useUIStore } from '../../stores/uiStore';
 
 interface PendingStation {
@@ -85,6 +89,7 @@ export function GameCanvas() {
         pixiApp.worldContainer.visible = true;
       };
     } else {
+      // ── Track-design & simulation: blueprint view ──
       pixiApp.app.renderer.background.color = 0x0a1628;
       pixiApp.worldContainer.visible = true;
 
@@ -99,8 +104,104 @@ export function GameCanvas() {
         openDialogRef.current(gridX, gridY);
       });
 
-      cleanupRenderersRef.current = () => {
+      // Simulation engine + train sprite renderer (only active in simulation mode)
+      let simEngine: SimulationEngine | null = null;
+      let trainSpriteRenderer: TrainSpriteRenderer | null = null;
+      let simTickerFn: ((ticker: { deltaMS: number }) => void) | null = null;
+
+      if (mode === 'simulation') {
+        // Disable track editing interactions in simulation mode
         interaction.destroy();
+
+        simEngine = new SimulationEngine();
+
+        // Load map data into engine
+        const mapState = useMapStore.getState();
+        const trainState = useTrainStore.getState();
+
+        // Load stations and lines into engine
+        simEngine.setStations(mapState.stations.map(s => ({ id: s.id, x: s.x, y: s.y })));
+
+        for (const line of mapState.lines) {
+          simEngine.setLine({ id: line.id, name: line.name, color: line.color, stationIds: line.stationIds });
+        }
+
+        // Add deployed trains
+        const stationMap = new Map<string, { x: number; y: number; name: string }>();
+        for (const s of mapState.stations) {
+          stationMap.set(s.id, { x: s.x, y: s.y, name: s.name });
+        }
+
+        const lineMap = new Map<string, { color: string; stationIds: string[] }>();
+        for (const l of mapState.lines) {
+          lineMap.set(l.id, { color: l.color, stationIds: l.stationIds });
+        }
+
+        const trainCarriageCounts = new Map<string, number>();
+        for (const train of trainState.trains) {
+          if (train.lineId) {
+            const capacity = trainState.getTrainCapacity(train.id);
+            simEngine.addTrain({ id: train.id, lineId: train.lineId, capacity });
+            trainCarriageCounts.set(train.id, train.carriages.length);
+          }
+        }
+
+        // Reset simulation store
+        useSimulationStore.getState().reset();
+
+        trainSpriteRenderer = new TrainSpriteRenderer(
+          pixiApp, simEngine, stationMap, lineMap, trainCarriageCounts
+        );
+
+        // Ticker: run simulation each frame
+        const engineRef = simEngine;
+        const spriteRef = trainSpriteRenderer;
+
+        simTickerFn = (ticker: { deltaMS: number }) => {
+          const simStore = useSimulationStore.getState();
+          if (simStore.paused) {
+            // Still render current positions even when paused
+            spriteRef.update(0);
+            return;
+          }
+
+          const deltaSeconds = (ticker.deltaMS / 1000) * simStore.speed;
+          engineRef.tick(deltaSeconds);
+          spriteRef.update(deltaSeconds);
+
+          // Update simulation store with stats
+          const allTrains = engineRef.getAllTrainStates();
+          let totalPax = 0;
+          for (const t of allTrains) {
+            totalPax += t.passengers;
+          }
+
+          // Update time in store (convert engine seconds to minutes)
+          const engineTime = engineRef.getTime();
+          useSimulationStore.setState({ time: engineTime });
+
+          // Accumulate passengers per line
+          for (const t of allTrains) {
+            if (t.status === 'loading') {
+              useSimulationStore.getState().addPassengers(t.lineId, 1);
+            }
+          }
+        };
+
+        pixiApp.app.ticker.add(simTickerFn);
+      }
+
+      cleanupRenderersRef.current = () => {
+        if (simTickerFn) {
+          pixiApp.app.ticker.remove(simTickerFn);
+        }
+        if (trainSpriteRenderer) {
+          trainSpriteRenderer.destroy();
+        }
+        if (mode !== 'simulation') {
+          // Only destroy interaction if we didn't already destroy it for simulation
+          interaction.destroy();
+        }
         stationRenderer.destroy();
         trackRenderer.destroy();
         camera.destroy();
