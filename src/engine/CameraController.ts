@@ -61,6 +61,17 @@ export class CameraController {
     const viewportHeight = screen.height / scale;
 
     this.gridRenderer.render(viewportX, viewportY, viewportWidth, viewportHeight, scale);
+    useUIStore.getState().setCameraPos(wc.x, wc.y);
+  }
+
+  /** Pan the camera so that the given world-pixel point is centred on screen. */
+  jumpTo(worldX: number, worldY: number) {
+    const wc = this.pixiApp.worldContainer;
+    const scale = wc.scale.x;
+    const screen = this.pixiApp.app.screen;
+    wc.x = screen.width / 2 - worldX * scale;
+    wc.y = screen.height / 2 - worldY * scale;
+    this.updateGrid();
   }
 
   // ─── Zoom ────────────────────────────────────────────────────────────────

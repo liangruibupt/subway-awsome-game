@@ -13,6 +13,9 @@ interface UIState {
   assemblyPhase: 'head-selection' | 'carriage-building';
   selectedCarriageIndex: number | null;
   activeTrainIndex: number;
+  // Camera position (worldContainer pixel offsets)
+  cameraX: number;
+  cameraY: number;
   // Challenge mode
   challengeId: string | null;
   challengeStars: Record<string, number>;
@@ -32,6 +35,7 @@ interface UIState {
   setChallengeStars: (stars: Record<string, number>) => void;
   setShowLevelSelect: (show: boolean) => void;
   setShowVictory: (show: boolean) => void;
+  setCameraPos: (x: number, y: number) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -43,6 +47,8 @@ export const useUIStore = create<UIState>((set) => ({
   zoomLevel: 1,
   mouseGridX: 0,
   mouseGridY: 0,
+  cameraX: 0,
+  cameraY: 0,
   assemblyPhase: 'head-selection',
   selectedCarriageIndex: null,
   activeTrainIndex: 0,
@@ -65,4 +71,5 @@ export const useUIStore = create<UIState>((set) => ({
   setChallengeStars: (stars) => set({ challengeStars: stars }),
   setShowLevelSelect: (show) => set({ showLevelSelect: show }),
   setShowVictory: (show) => set({ showVictory: show }),
+  setCameraPos: (x, y) => set({ cameraX: x, cameraY: y }),
 }));

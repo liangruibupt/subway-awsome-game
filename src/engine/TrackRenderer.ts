@@ -60,7 +60,7 @@ export class TrackRenderer {
         for (let i = 1; i < path.length; i++) {
           this.graphics.lineTo(path[i].x * GRID_SIZE, path[i].y * GRID_SIZE);
         }
-        this.graphics.stroke({ color: colorStr, width: 1, alpha: 1 });
+        this.graphics.stroke({ color: colorStr, width: 1, alpha: 0.5 });
         continue;
       }
 
@@ -78,7 +78,10 @@ export class TrackRenderer {
       for (let i = 1; i < path.length; i++) {
         this.graphics.lineTo(path[i].x * GRID_SIZE, path[i].y * GRID_SIZE);
       }
-      this.graphics.stroke({ color: colorStr, width: 3, alpha: 1 });
+      // Full detail at zoom >= 0.5; reduced width/alpha at 0.25–0.5
+      const sharpWidth = zoom >= 0.5 ? 3 : 2;
+      const sharpAlpha = zoom >= 0.5 ? 1 : 0.6;
+      this.graphics.stroke({ color: colorStr, width: sharpWidth, alpha: sharpAlpha });
     }
   }
 

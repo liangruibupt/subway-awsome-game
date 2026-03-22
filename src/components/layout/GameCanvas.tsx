@@ -4,11 +4,13 @@ import { GridRenderer } from '../../engine/GridRenderer';
 import { CameraController } from '../../engine/CameraController';
 import { StationRenderer } from '../../engine/StationRenderer';
 import { TrackRenderer } from '../../engine/TrackRenderer';
+import { CityDecorations } from '../../engine/CityDecorations';
 import { InteractionManager } from '../../engine/InteractionManager';
 import { AssemblyRenderer } from '../../engine/AssemblyRenderer';
 import { SimulationEngine } from '../../engine/SimulationEngine';
 import { TrainSpriteRenderer } from '../../engine/TrainSpriteRenderer';
 import { StationNameDialog } from '../track-design/StationNameDialog';
+import { MiniMap } from '../shared/MiniMap';
 import { useMapStore } from '../../stores/mapStore';
 import { useTrainStore } from '../../stores/trainStore';
 import { useSimulationStore } from '../../stores/simulationStore';
@@ -23,6 +25,7 @@ export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pixiAppRef = useRef<PixiApp | null>(null);
   const cleanupRenderersRef = useRef<(() => void) | null>(null);
+  const cameraRef = useRef<CameraController | null>(null);
 
   const mode = useUIStore((state) => state.mode);
 
@@ -96,8 +99,12 @@ export function GameCanvas() {
       const grid = new GridRenderer(pixiApp);
       const camera = new CameraController(pixiApp, grid);
       camera.updateGrid();
+      cameraRef.current = camera;
 
+      // TrackRenderer first (addChildAt 1), then CityDecorations (addChildAt 1)
+      // so final z-order is: grid(0) → decorations(1) → tracks(2) → stations(3)
       const trackRenderer = new TrackRenderer(pixiApp);
+      const cityDecorations = new CityDecorations(pixiApp);
       const stationRenderer = new StationRenderer(pixiApp);
 
       const interaction = new InteractionManager(pixiApp, camera, (gridX, gridY) => {
@@ -213,8 +220,10 @@ export function GameCanvas() {
           interaction.destroy();
         }
         stationRenderer.destroy();
+        cityDecorations.destroy();
         trackRenderer.destroy();
         camera.destroy();
+        cameraRef.current = null;
       };
     }
   }, [mode, pixiReady]);
@@ -228,6 +237,10 @@ export function GameCanvas() {
     setDialogOpen(false);
   }, []);
 
+  const handleJump = useCallback((worldX: number, worldY: number) => {
+    cameraRef.current?.jumpTo(worldX, worldY);
+  }, []);
+
   return (
     <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
@@ -239,6 +252,10 @@ export function GameCanvas() {
           onCancel={handleDialogCancel}
           position={{ x: pending.gridX, y: pending.gridY }}
         />
+      )}
+
+      {mode !== 'assembly' && (
+        <MiniMap onJump={handleJump} />
       )}
     </div>
   );
