@@ -5,8 +5,10 @@ import { CameraController } from '../../engine/CameraController';
 import { StationRenderer } from '../../engine/StationRenderer';
 import { TrackRenderer } from '../../engine/TrackRenderer';
 import { InteractionManager } from '../../engine/InteractionManager';
+import { AssemblyRenderer } from '../../engine/AssemblyRenderer';
 import { StationNameDialog } from '../track-design/StationNameDialog';
 import { useMapStore } from '../../stores/mapStore';
+import { useUIStore } from '../../stores/uiStore';
 
 interface PendingStation {
   gridX: number;
@@ -15,6 +17,9 @@ interface PendingStation {
 
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Read the current game mode so the effect re-runs on mode change
+  const mode = useUIStore((state) => state.mode);
 
   // Dialog state — lives in React so the overlay re-renders correctly
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -26,8 +31,7 @@ export function GameCanvas() {
 
   // Holds the promise for the current init cycle so that a strict-mode re-run
   // waits for the previous init to finish and release the WebGL context before
-  // starting a new one.  Without this, both PixiJS instances share (then
-  // corrupt) the same canvas context.
+  // starting a new one.
   const prevInitDoneRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
@@ -62,35 +66,52 @@ export function GameCanvas() {
       }
 
       if (cancelled) {
-        pixiApp.destroy();   // release WebGL context before next cycle starts
+        pixiApp.destroy();
         resolveThisDone();
         return;
       }
 
-      const grid = new GridRenderer(pixiApp);
-      const camera = new CameraController(pixiApp, grid);
-      camera.updateGrid();
+      if (mode === 'assembly') {
+        // ── Assembly mode: dark background + 2.5D turntable renderer ──────────
+        pixiApp.app.renderer.background.color = 0x1a1a2e;
 
-      // Renders tracks; subscribes to mapStore & uiStore internally
-      // Created before StationRenderer so tracks appear below stations
-      const trackRenderer = new TrackRenderer(pixiApp);
+        const assemblyRenderer = new AssemblyRenderer(pixiApp);
+        assemblyRenderer.init();
 
-      // Renders stations; subscribes to mapStore & uiStore internally
-      const stationRenderer = new StationRenderer(pixiApp);
+        cleanupFn = () => {
+          assemblyRenderer.destroy();
+          pixiApp.destroy();
+          resolveThisDone();
+        };
+      } else {
+        // ── Track-design / simulation mode: blueprint grid + station/track renderers
+        pixiApp.app.renderer.background.color = 0x0a1628;
 
-      // Handles canvas click interactions; calls openDialogRef when placing stations
-      const interaction = new InteractionManager(pixiApp, camera, (gridX, gridY) => {
-        openDialogRef.current(gridX, gridY);
-      });
+        const grid = new GridRenderer(pixiApp);
+        const camera = new CameraController(pixiApp, grid);
+        camera.updateGrid();
 
-      cleanupFn = () => {
-        interaction.destroy();
-        stationRenderer.destroy();
-        trackRenderer.destroy();
-        camera.destroy();
-        pixiApp.destroy();
-        resolveThisDone();
-      };
+        // Renders tracks; subscribes to mapStore & uiStore internally
+        // Created before StationRenderer so tracks appear below stations
+        const trackRenderer = new TrackRenderer(pixiApp);
+
+        // Renders stations; subscribes to mapStore & uiStore internally
+        const stationRenderer = new StationRenderer(pixiApp);
+
+        // Handles canvas click interactions; calls openDialogRef when placing stations
+        const interaction = new InteractionManager(pixiApp, camera, (gridX, gridY) => {
+          openDialogRef.current(gridX, gridY);
+        });
+
+        cleanupFn = () => {
+          interaction.destroy();
+          stationRenderer.destroy();
+          trackRenderer.destroy();
+          camera.destroy();
+          pixiApp.destroy();
+          resolveThisDone();
+        };
+      }
     };
 
     run();
@@ -105,10 +126,9 @@ export function GameCanvas() {
         // run() once it notices cancelled === true.
       }
     };
-  }, []);
+  }, [mode]); // re-run whenever the game mode changes
 
   // Keep the stable ref up-to-date with the current state setters.
-  // This runs on every render but is very cheap.
   useEffect(() => {
     openDialogRef.current = (gridX: number, gridY: number) => {
       setPending({ gridX, gridY });
@@ -129,13 +149,15 @@ export function GameCanvas() {
     <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
-      {/* Station naming dialog — React overlay on top of the PixiJS canvas */}
-      <StationNameDialog
-        isOpen={dialogOpen}
-        onConfirm={handleDialogConfirm}
-        onCancel={handleDialogCancel}
-        position={{ x: pending.gridX, y: pending.gridY }}
-      />
+      {/* Station naming dialog — only shown in track-design / simulation modes */}
+      {mode !== 'assembly' && (
+        <StationNameDialog
+          isOpen={dialogOpen}
+          onConfirm={handleDialogConfirm}
+          onCancel={handleDialogCancel}
+          position={{ x: pending.gridX, y: pending.gridY }}
+        />
+      )}
     </div>
   );
 }
