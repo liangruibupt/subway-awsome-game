@@ -6,6 +6,7 @@ interface UIState {
   tool: TrackTool;
   selectedStationId: string | null;
   selectedTrainId: string | null;
+  selectedLineId: string | null;
   zoomLevel: number;
   mouseGridX: number;
   mouseGridY: number;
@@ -15,6 +16,7 @@ interface UIState {
   setTool: (tool: TrackTool) => void;
   selectStation: (id: string | null) => void;
   selectTrain: (id: string | null) => void;
+  selectLine: (id: string | null) => void;
   setZoom: (zoom: number) => void;
   setMouseGrid: (x: number, y: number) => void;
   setAssemblyPhase: (phase: 'head-selection' | 'carriage-building') => void;
@@ -26,6 +28,7 @@ export const useUIStore = create<UIState>((set) => ({
   tool: 'station',
   selectedStationId: null,
   selectedTrainId: null,
+  selectedLineId: null,
   zoomLevel: 1,
   mouseGridX: 0,
   mouseGridY: 0,
@@ -35,6 +38,7 @@ export const useUIStore = create<UIState>((set) => ({
   setTool: (tool) => set({ tool }),
   selectStation: (id) => set({ selectedStationId: id }),
   selectTrain: (id) => set({ selectedTrainId: id }),
+  selectLine: (id) => set({ selectedLineId: id }),
   setZoom: (zoom) => set({ zoomLevel: Math.max(0.25, Math.min(4, zoom)) }),
   setMouseGrid: (x, y) => set({ mouseGridX: x, mouseGridY: y }),
   setAssemblyPhase: (phase) => set({ assemblyPhase: phase, selectedCarriageIndex: null }),

@@ -200,7 +200,11 @@ export class InteractionManager {
       return;
     }
 
-    const activeLineId = lines[0].id;
+    // Use selected line, or fall back to first line
+    const selectedLineId = useUIStore.getState().selectedLineId;
+    const activeLineId = selectedLineId && lines.find(l => l.id === selectedLineId)
+      ? selectedLineId
+      : lines[0].id;
     addTrack(activeLineId, this.connectSourceId, nearestId);
 
     this.connectSourceId = null;
@@ -228,7 +232,9 @@ export class InteractionManager {
     if (!source) return;
 
     const lines = useMapStore.getState().lines;
-    const activeLineColor = lines.length > 0 ? lines[0].color : '#ffffff';
+    const selectedLineId = useUIStore.getState().selectedLineId;
+    const activeLine = selectedLineId ? lines.find(l => l.id === selectedLineId) : lines[0];
+    const activeLineColor = activeLine?.color ?? '#ffffff';
 
     const sx = source.x * GRID_SIZE;
     const sy = source.y * GRID_SIZE;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMapStore } from '../../stores/mapStore';
+import { useUIStore } from '../../stores/uiStore';
 
 const PRESET_COLORS = [
   '#ff6b6b', '#74b9ff', '#55efc4', '#ffd93d',
@@ -15,15 +16,21 @@ export function LineList() {
   const lines = useMapStore((s) => s.lines);
   const stations = useMapStore((s) => s.stations);
   const addLine = useMapStore((s) => s.addLine);
+  const selectedLineId = useUIStore((s) => s.selectedLineId);
+  const selectLine = useUIStore((s) => s.selectLine);
 
   const [showForm, setShowForm] = useState(false);
   const [newLineName, setNewLineName] = useState('');
   const [pickedColor, setPickedColor] = useState(PRESET_COLORS[0]);
-  const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
 
   const handleAddLine = () => {
     const name = newLineName.trim() || `Line ${lines.length + 1}`;
     addLine(name, pickedColor);
+    // Auto-select the newly created line
+    const newLines = useMapStore.getState().lines;
+    if (newLines.length > 0) {
+      selectLine(newLines[newLines.length - 1].id);
+    }
     setShowForm(false);
     setNewLineName('');
     setPickedColor(PRESET_COLORS[0]);
@@ -66,7 +73,7 @@ export function LineList() {
         return (
           <div
             key={line.id}
-            onClick={() => setSelectedLineId(isSelected ? null : line.id)}
+            onClick={() => selectLine(isSelected ? null : line.id)}
             style={{
               display: 'flex',
               alignItems: 'center',
