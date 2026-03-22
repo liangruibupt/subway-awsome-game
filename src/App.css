@@ -1,0 +1,243 @@
+/* Global reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Font & base */
+body {
+  font-family: 'Courier New', Courier, monospace;
+  background: #060e1f;
+  color: #dfe6e9;
+}
+
+/* ── App shell ── */
+.app {
+  display: grid;
+  grid-template-rows: 40px 1fr 30px;
+  grid-template-columns: 1fr;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #060e1f;
+}
+
+/* ── Main area (3-column) ── */
+.main-area {
+  display: grid;
+  grid-template-columns: 50px 1fr 180px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Top bar ── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  background: #0d1f3c;
+  border-bottom: 1px solid #1a3a5c;
+  padding: 0 12px;
+  gap: 0;
+  height: 40px;
+  overflow: hidden;
+}
+
+.top-bar-title {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  color: #81ecec;
+  text-shadow: 0 0 8px #81ecec88;
+  margin-right: 24px;
+  flex-shrink: 0;
+}
+
+.top-bar-tabs {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  gap: 2px;
+}
+
+.tab-btn {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  background: transparent;
+  color: #636e72;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.tab-btn:hover {
+  color: #dfe6e9;
+  background: #1a3a5c44;
+}
+
+.tab-btn--active {
+  color: #dfe6e9;
+  border-bottom: 2px solid var(--tab-color, #00b894);
+  background: #1a3a5c55;
+}
+
+.top-bar-spacer {
+  flex: 1;
+}
+
+/* ── Left toolbar ── */
+.left-toolbar {
+  background: #0d1f3c;
+  border-right: 1px solid #1a3a5c;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  overflow: hidden;
+}
+
+.tool-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.tool-btn {
+  font-family: 'Courier New', monospace;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #636e72;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  gap: 2px;
+}
+
+.tool-btn:hover {
+  color: #dfe6e9;
+  background: #1a3a5c55;
+  border-color: #1a3a5c;
+}
+
+.tool-btn--active {
+  color: #81ecec;
+  background: #1a3a5c88;
+  border-color: #81ecec55;
+}
+
+.tool-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tool-label {
+  font-size: 7px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.toolbar-placeholder {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder-text-vertical {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #636e72;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+
+/* ── Game canvas ── */
+.game-canvas {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transition: background-color 0.3s;
+}
+
+/* ── Right panel ── */
+.right-panel {
+  background: #0d1f3c;
+  border-left: 1px solid #1a3a5c;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 8px 0;
+}
+
+.panel-section {
+  padding: 8px 10px;
+  border-bottom: 1px solid #1a3a5c44;
+}
+
+.panel-section-title {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: #81ecec;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.panel-empty-msg {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: #636e72;
+  font-style: italic;
+}
+
+/* ── Bottom bar ── */
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  background: #0d1f3c;
+  border-top: 1px solid #1a3a5c;
+  padding: 0 12px;
+  height: 30px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.bottom-bar-item {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #636e72;
+}
+
+.bottom-bar-sep {
+  color: #1a3a5c;
+  font-size: 12px;
+}
