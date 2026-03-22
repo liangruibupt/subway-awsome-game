@@ -51,7 +51,6 @@ interface StationPassengerData {
 }
 
 const TRAIN_SPEED = 2;  // grid-units per simulated second (~80 km/h scaled)
-const DWELL_TIME = 10;  // seconds the train dwells at each station
 
 export class SimulationEngine {
   private lines = new Map<string, LineData>();
@@ -60,6 +59,7 @@ export class SimulationEngine {
   private passengerData = new Map<string, StationPassengerData>();
   private trackPaths = new Map<string, { x: number; y: number }[]>();
   private timeMinutes = 0; // minutes elapsed from 6 AM
+  private dwellTime = 10;  // seconds the train dwells at each station
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -196,6 +196,24 @@ export class SimulationEngine {
     this.timeMinutes = 0;
   }
 
+  setDwellTime(seconds: number): void {
+    this.dwellTime = seconds;
+  }
+
+  getTrainTrackPath(trainId: string): { x: number; y: number }[] | null {
+    const train = this.trains.get(trainId);
+    if (!train) return null;
+    return this.getTrackPath(train);
+  }
+
+  getTrainPathLength(trainId: string): number {
+    const train = this.trains.get(trainId);
+    if (!train) return 0;
+    const path = this.getTrackPath(train);
+    if (!path) return 0;
+    return this.getPathLength(path);
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   private getRushMultiplier(): number {
@@ -277,7 +295,7 @@ export class SimulationEngine {
       }
 
       train.status = 'stopped';
-      train.dwellTimer = DWELL_TIME;
+      train.dwellTimer = this.dwellTime;
     }
   }
 

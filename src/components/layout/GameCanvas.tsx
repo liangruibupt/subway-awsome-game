@@ -136,11 +136,12 @@ export function GameCanvas() {
         }
 
         const trainCarriageCounts = new Map<string, number>();
+        const trainStyles = new Map<string, { headColor: string; carriageColors: string[] }>();
 
         useSimulationStore.getState().reset();
 
         trainSpriteRenderer = new TrainSpriteRenderer(
-          pixiApp, simEngine, stationMap, lineMap, trainCarriageCounts
+          pixiApp, simEngine, stationMap, lineMap, trainCarriageCounts, trainStyles
         );
 
         const engineRef = simEngine;
@@ -159,6 +160,18 @@ export function GameCanvas() {
                 const capacity = trainState.getTrainCapacity(train.id);
                 engineRef.addTrain({ id: train.id, lineId: train.lineId, capacity });
                 trainCarriageCounts.set(train.id, train.carriages.length);
+                const HEAD_CITY_COLORS: Record<string, string> = {
+                  'tokyo':   '#e8e8e8',
+                  'beijing': '#5dade2',
+                  'london':  '#c0392b',
+                  'newyork': '#7f8c8d',
+                  'neo':     '#2d3436',
+                  'quantum': '#6c5ce7',
+                };
+                trainStyles.set(train.id, {
+                  headColor: HEAD_CITY_COLORS[train.head.city] ?? '#0984e3',
+                  carriageColors: train.carriages.map(c => c.style.bodyColor),
+                });
               }
             }
           }
@@ -168,6 +181,7 @@ export function GameCanvas() {
             return;
           }
 
+          engineRef.setDwellTime(simStore.dwellTime);
           const deltaSeconds = (ticker.deltaMS / 1000) * simStore.speed;
           engineRef.tick(deltaSeconds);
           spriteRef.update(deltaSeconds);

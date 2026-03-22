@@ -15,8 +15,10 @@ export function SpeedControls() {
   const speed = useSimulationStore((s) => s.speed);
   const paused = useSimulationStore((s) => s.paused);
   const time = useSimulationStore((s) => s.time);
+  const dwellTime = useSimulationStore((s) => s.dwellTime);
   const setSpeed = useSimulationStore((s) => s.setSpeed);
   const togglePause = useSimulationStore((s) => s.togglePause);
+  const setDwellTime = useSimulationStore((s) => s.setDwellTime);
 
   return (
     <div style={{
@@ -77,6 +79,35 @@ export function SpeedControls() {
             {s}x
           </button>
         ))}
+      </div>
+
+      {/* Dwell time slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{
+          fontFamily: 'Courier New, monospace',
+          fontSize: 10,
+          color: '#b2bec3',
+          whiteSpace: 'nowrap',
+        }}>
+          Station Wait Time
+        </span>
+        <input
+          type="range"
+          min={2}
+          max={30}
+          step={1}
+          value={dwellTime}
+          onChange={(e) => setDwellTime(Number(e.target.value))}
+          style={{ width: 80 }}
+        />
+        <span style={{
+          fontFamily: 'Courier New, monospace',
+          fontSize: 10,
+          color: '#81ecec',
+          minWidth: 60,
+        }}>
+          {dwellTime} seconds
+        </span>
       </div>
     </div>
   );

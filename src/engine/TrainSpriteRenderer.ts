@@ -11,12 +11,42 @@ const CARRIAGE_W = 20;
 const CARRIAGE_H = 10;
 const TRAIL_LENGTH = 8;
 
+interface PathPosition {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+}
+
+function getPositionOnPath(
+  path: { x: number; y: number }[],
+  progress: number,
+  totalLen: number,
+): PathPosition {
+  const targetDist = totalLen * Math.max(0, Math.min(1, progress));
+  let traveled = 0;
+  for (let i = 1; i < path.length; i++) {
+    const segLen = Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].y - path[i - 1].y);
+    if (traveled + segLen >= targetDist) {
+      const t = segLen > 0 ? (targetDist - traveled) / segLen : 0;
+      const x = path[i - 1].x + (path[i].x - path[i - 1].x) * t;
+      const y = path[i - 1].y + (path[i].y - path[i - 1].y) * t;
+      const dx = path[i].x - path[i - 1].x;
+      const dy = path[i].y - path[i - 1].y;
+      return { x, y, dx: dx || 0, dy: dy || 0 };
+    }
+    traveled += segLen;
+  }
+  return { x: path[path.length - 1].x, y: path[path.length - 1].y, dx: 0, dy: 0 };
+}
+
 export class TrainSpriteRenderer {
   private container: Container;
   private engine: SimulationEngine;
   private stationMap: Map<string, { x: number; y: number; name: string }>;
   private lineMap: Map<string, { color: string; stationIds: string[] }>;
   private trainCarriageCounts: Map<string, number>;
+  private trainStyles: Map<string, { headColor: string; carriageColors: string[] }>;
 
   private trails = new Map<string, { x: number; y: number }[]>();
   private pulseTimers = new Map<string, number>();
@@ -28,6 +58,7 @@ export class TrainSpriteRenderer {
     stationMap: Map<string, { x: number; y: number; name: string }>,
     lineMap: Map<string, { color: string; stationIds: string[] }>,
     trainCarriageCounts: Map<string, number>,
+    trainStyles: Map<string, { headColor: string; carriageColors: string[] }>,
   ) {
     this.container = new Container();
     pixiApp.worldContainer.addChild(this.container);
@@ -35,6 +66,7 @@ export class TrainSpriteRenderer {
     this.stationMap = stationMap;
     this.lineMap = lineMap;
     this.trainCarriageCounts = trainCarriageCounts;
+    this.trainStyles = trainStyles;
   }
 
   update(deltaSeconds: number): void {
@@ -94,10 +126,23 @@ export class TrainSpriteRenderer {
   ): void {
     const trainContainer = new Container();
 
-    // Calculate movement direction from trail
+    // ── Get track path for path-based car positioning ────────────────────────
+    const trackPath = this.engine.getTrainTrackPath(state.id);
+    const pathLength = this.engine.getTrainPathLength(state.id);
+    const hasPath = trackPath !== null && trackPath.length >= 2 && pathLength > 0;
+
+    // ── Determine head direction from the current path segment ───────────────
     let dirX = 1;
     let dirY = 0;
-    if (trail.length >= 2) {
+
+    if (hasPath) {
+      const headPos = getPositionOnPath(trackPath!, state.progress, pathLength);
+      const dLen = Math.sqrt(headPos.dx * headPos.dx + headPos.dy * headPos.dy);
+      if (dLen > 0) {
+        dirX = headPos.dx / dLen;
+        dirY = headPos.dy / dLen;
+      }
+    } else if (trail.length >= 2) {
       const prev = trail[trail.length - 2];
       const curr = trail[trail.length - 1];
       const dx = curr.x - prev.x;
@@ -108,6 +153,12 @@ export class TrainSpriteRenderer {
         dirY = dy / dist;
       }
     }
+
+    const isVertical = Math.abs(dirY) > Math.abs(dirX);
+
+    // ── Train style colors ───────────────────────────────────────────────────
+    const styles = this.trainStyles.get(state.id);
+    const headColor = styles?.headColor ?? colorStr;
 
     const g = new Graphics();
 
@@ -138,25 +189,52 @@ export class TrainSpriteRenderer {
       }
     }
 
-    // ── Train head (centered at px, py) ─────────────────────────────────────
-    const hw = HEAD_W / 2;
-    const hh = HEAD_H / 2;
-    g.roundRect(px - hw, py - hh, HEAD_W, HEAD_H, 3).fill({ color: colorStr, alpha: 1 });
+    // ── Train head (rotated per segment direction) ───────────────────────────
+    const [headRW, headRH] = isVertical ? [HEAD_H, HEAD_W] : [HEAD_W, HEAD_H];
+    const hw = headRW / 2;
+    const hh = headRH / 2;
+    g.roundRect(px - hw, py - hh, headRW, headRH, 3).fill({ color: headColor, alpha: 1 });
 
-    // ── Carriages behind head ────────────────────────────────────────────────
-    const behindX = -dirX;
-    const behindY = -dirY;
-    for (let i = 0; i < carriageCount; i++) {
-      const offset = hw + 4 + i * (CARRIAGE_W + 3) + CARRIAGE_W / 2;
-      const cx = px + behindX * offset;
-      const cy = py + behindY * offset;
-      g.roundRect(cx - CARRIAGE_W / 2, cy - CARRIAGE_H / 2, CARRIAGE_W, CARRIAGE_H, 2)
-        .fill({ color: colorStr, alpha: 0.85 });
+    // ── Carriages placed along the actual track path ─────────────────────────
+    if (hasPath) {
+      const pixelPathLen = pathLength * GRID_SIZE;
+      // Distance in pixels from head center to first carriage center,
+      // then successive carriage-to-carriage spacing.
+      const firstOffset = HEAD_W / 2 + 4 + CARRIAGE_W / 2;  // 29 px
+      const interCarriage = CARRIAGE_W + 3;                   // 23 px
+
+      for (let i = 0; i < carriageCount; i++) {
+        const offsetPx = firstOffset + i * interCarriage;
+        const carriageProgress = state.progress - offsetPx / pixelPathLen;
+        const pos = getPositionOnPath(trackPath!, carriageProgress, pathLength);
+        const cpx = pos.x * GRID_SIZE;
+        const cpy = pos.y * GRID_SIZE;
+        const cDLen = Math.sqrt(pos.dx * pos.dx + pos.dy * pos.dy);
+        const cIsVert = cDLen > 0
+          ? Math.abs(pos.dy / cDLen) > Math.abs(pos.dx / cDLen)
+          : isVertical;
+        const [cw, ch] = cIsVert ? [CARRIAGE_H, CARRIAGE_W] : [CARRIAGE_W, CARRIAGE_H];
+        const carriageColor = styles?.carriageColors[i] ?? colorStr;
+        g.roundRect(cpx - cw / 2, cpy - ch / 2, cw, ch, 2)
+          .fill({ color: carriageColor, alpha: 0.85 });
+      }
+    } else {
+      // Fallback: straight line behind head using trail direction
+      const behindX = -dirX;
+      const behindY = -dirY;
+      for (let i = 0; i < carriageCount; i++) {
+        const offset = hw + 4 + i * (CARRIAGE_W + 3) + CARRIAGE_W / 2;
+        const cx = px + behindX * offset;
+        const cy = py + behindY * offset;
+        const carriageColor = styles?.carriageColors[i] ?? colorStr;
+        g.roundRect(cx - CARRIAGE_W / 2, cy - CARRIAGE_H / 2, CARRIAGE_W, CARRIAGE_H, 2)
+          .fill({ color: carriageColor, alpha: 0.85 });
+      }
     }
 
     // ── Direction indicator (small triangle pointing forward) ────────────────
     const arrowStartX = px + dirX * (hw + 2);
-    const arrowStartY = py + dirY * (hw + 2);
+    const arrowStartY = py + dirY * (hh + 2);
     const arrowLen = 5;
     const arrowWidth = 4;
     const tipX = arrowStartX + dirX * arrowLen;
