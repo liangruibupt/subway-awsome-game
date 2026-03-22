@@ -36,8 +36,31 @@ export function LeftToolBar() {
       )}
       {mode === 'assembly' && <TrainCatalog />}
       {mode === 'simulation' && (
-        <div className="toolbar-placeholder">
-          <span className="placeholder-text-vertical">DEPLOY</span>
+        <div style={{
+          padding: '16px 6px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+        }}>
+          <div style={{
+            fontSize: 9,
+            fontWeight: 'bold',
+            color: '#81ecec',
+            fontFamily: 'Courier New, monospace',
+            letterSpacing: 1,
+          }}>
+            Simulation
+          </div>
+          <div style={{
+            fontSize: 8,
+            color: '#b2bec3',
+            fontFamily: 'Courier New, monospace',
+            textAlign: 'center',
+            lineHeight: 1.4,
+          }}>
+            Watch your trains run!
+          </div>
         </div>
       )}
     </div>

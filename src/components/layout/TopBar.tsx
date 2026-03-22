@@ -1,5 +1,6 @@
 import { useUIStore } from '../../stores/uiStore';
 import type { GameMode } from '../../types';
+import { SpeedControls } from '../simulation/SpeedControls';
 
 const TABS: { label: string; mode: GameMode; color: string }[] = [
   { label: 'TRACKS', mode: 'track-design', color: '#00b894' },
@@ -26,6 +27,7 @@ export function TopBar() {
           </button>
         ))}
       </div>
+      {mode === 'simulation' && <SpeedControls />}
       <div className="top-bar-spacer" />
     </div>
   );

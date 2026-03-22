@@ -3,6 +3,8 @@ import { LineList } from '../track-design/LineList';
 import { StationProperties } from '../track-design/StationProperties';
 import { CustomizationPanel } from '../assembly/CustomizationPanel';
 import { CarriageCounter } from '../assembly/CarriageCounter';
+import { DeploymentPanel } from '../simulation/DeploymentPanel';
+import { LiveOpsPanel } from '../simulation/LiveOpsPanel';
 
 export function RightPanel() {
   const mode = useUIStore((s) => s.mode);
@@ -31,10 +33,14 @@ export function RightPanel() {
         </>
       )}
       {mode === 'simulation' && (
-        <div className="panel-section">
-          <div className="panel-section-title">LIVE OPS</div>
-          <div className="panel-empty-msg">Sim not running</div>
-        </div>
+        <>
+          <div className="panel-section">
+            <DeploymentPanel />
+          </div>
+          <div className="panel-section">
+            <LiveOpsPanel />
+          </div>
+        </>
       )}
     </div>
   );
