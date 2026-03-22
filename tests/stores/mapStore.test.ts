@@ -58,6 +58,45 @@ describe('mapStore', () => {
     expect(useMapStore.getState().tracks).toHaveLength(0);
   });
 
+  it('deleteStation removes stationId from lines', () => {
+    const { addStation, addLine, addTrack, deleteStation } = useMapStore.getState();
+    addStation('A', 0, 0);
+    addStation('B', 5, 0);
+    addLine('Red', '#ff0000');
+    const s = useMapStore.getState();
+    addTrack(s.lines[0].id, s.stations[0].id, s.stations[1].id);
+    // Line should have 2 stations
+    expect(useMapStore.getState().lines[0].stationIds).toHaveLength(2);
+    deleteStation(useMapStore.getState().stations[0].id);
+    // Line should now have 1 station
+    expect(useMapStore.getState().lines[0].stationIds).toHaveLength(1);
+  });
+
+  it('deleteTrack re-evaluates station lineIds and type', () => {
+    const { addStation, addLine, addTrack, deleteTrack } = useMapStore.getState();
+    addStation('Hub', 3, 3);
+    addStation('A', 0, 3);
+    addStation('B', 3, 0);
+    addLine('Red', '#ff0000');
+    addLine('Blue', '#0000ff');
+    const s = useMapStore.getState();
+    addTrack(s.lines[0].id, s.stations[1].id, s.stations[0].id); // A -> Hub on Red
+    addTrack(s.lines[1].id, s.stations[2].id, s.stations[0].id); // B -> Hub on Blue
+
+    // Hub should be interchange
+    let hub = useMapStore.getState().stations.find(st => st.name === 'Hub');
+    expect(hub?.type).toBe('interchange');
+
+    // Delete the Blue track
+    const blueTrack = useMapStore.getState().tracks.find(t => t.lineId === s.lines[1].id);
+    deleteTrack(blueTrack!.id);
+
+    // Hub should now be normal (only Red line)
+    hub = useMapStore.getState().stations.find(st => st.name === 'Hub');
+    expect(hub?.type).toBe('normal');
+    expect(hub?.lineIds).toHaveLength(1);
+  });
+
   it('auto-detects interchange stations', () => {
     const { addStation, addLine, addTrack } = useMapStore.getState();
     addStation('Hub', 3, 3);

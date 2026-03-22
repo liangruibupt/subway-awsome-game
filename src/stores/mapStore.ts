@@ -41,6 +41,10 @@ export const useMapStore = create<MapState>((set, get) => ({
   deleteStation: (id) => set(state => ({
     stations: state.stations.filter(s => s.id !== id),
     tracks: state.tracks.filter(t => t.stationAId !== id && t.stationBId !== id),
+    lines: state.lines.map(l => ({
+      ...l,
+      stationIds: l.stationIds.filter(sid => sid !== id),
+    })),
   })),
 
   addLine: (name, color) => set(state => ({
@@ -85,6 +89,31 @@ export const useMapStore = create<MapState>((set, get) => ({
     });
   },
 
-  deleteTrack: (id) => set(state => ({ tracks: state.tracks.filter(t => t.id !== id) })),
+  deleteTrack: (id) => set(state => {
+    const remainingTracks = state.tracks.filter(t => t.id !== id);
+
+    const updatedStations = state.stations.map(station => {
+      const newLineIds = [...new Set(
+        remainingTracks
+          .filter(t => t.stationAId === station.id || t.stationBId === station.id)
+          .map(t => t.lineId),
+      )];
+      return {
+        ...station,
+        lineIds: newLineIds,
+        type: (newLineIds.length >= 2 ? 'interchange' : 'normal') as Station['type'],
+      };
+    });
+
+    const updatedLines = state.lines.map(line => {
+      const stationIdsForLine = new Set<string>();
+      remainingTracks
+        .filter(t => t.lineId === line.id)
+        .forEach(t => { stationIdsForLine.add(t.stationAId); stationIdsForLine.add(t.stationBId); });
+      return { ...line, stationIds: Array.from(stationIdsForLine) };
+    });
+
+    return { tracks: remainingTracks, stations: updatedStations, lines: updatedLines };
+  }),
   reset: () => set(initialState),
 }));
