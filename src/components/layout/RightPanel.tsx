@@ -1,20 +1,23 @@
 import { useUIStore } from '../../stores/uiStore';
+import { LineList } from '../track-design/LineList';
+import { StationProperties } from '../track-design/StationProperties';
 
 export function RightPanel() {
   const mode = useUIStore((s) => s.mode);
+  const selectedStationId = useUIStore((s) => s.selectedStationId);
 
   return (
     <div className="right-panel">
       {mode === 'track-design' && (
         <>
           <div className="panel-section">
-            <div className="panel-section-title">LINE LIST</div>
-            <div className="panel-empty-msg">No lines yet</div>
+            <LineList />
           </div>
-          <div className="panel-section">
-            <div className="panel-section-title">PROPERTIES</div>
-            <div className="panel-empty-msg">Select an object</div>
-          </div>
+          {selectedStationId && (
+            <div className="panel-section">
+              <StationProperties />
+            </div>
+          )}
         </>
       )}
       {mode === 'assembly' && (

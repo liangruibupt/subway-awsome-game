@@ -1,3 +1,4 @@
+import { Graphics } from 'pixi.js';
 import type { PixiApp } from './PixiApp';
 import type { CameraController } from './CameraController';
 import { useUIStore } from '../stores/uiStore';
@@ -13,6 +14,9 @@ const GRID_SIZE = 30;
  */
 const DELETE_HIT_RADIUS = 20;
 
+/** Same radius used for the connect tool to pick a station. */
+const CONNECT_HIT_RADIUS = 20;
+
 /** Callback called when the station tool is active and the user clicks a grid point. */
 type StationPlacementCallback = (gridX: number, gridY: number) => void;
 
@@ -25,6 +29,16 @@ export class InteractionManager {
   private camera: CameraController;
   private onStationPlacement: StationPlacementCallback;
 
+  /** ID of the first station clicked when using the connect tool. */
+  private connectSourceId: string | null = null;
+
+  /** PixiJS graphics object used to draw the dashed preview line. */
+  private previewGraphics: Graphics;
+
+  /** Current mouse position in world-space (updated on pointermove). */
+  private mouseWorldX = 0;
+  private mouseWorldY = 0;
+
   constructor(
     pixiApp: PixiApp,
     camera: CameraController,
@@ -34,7 +48,12 @@ export class InteractionManager {
     this.camera = camera;
     this.onStationPlacement = onStationPlacement;
 
+    // Preview line graphics — sits on top of everything in world space
+    this.previewGraphics = new Graphics();
+    pixiApp.worldContainer.addChild(this.previewGraphics);
+
     this.canvas.addEventListener('pointerdown', this.handlePointerDown);
+    this.canvas.addEventListener('pointermove', this.handlePointerMove);
   }
 
   private handlePointerDown = (e: PointerEvent) => {
@@ -52,8 +71,31 @@ export class InteractionManager {
       this.handleStationPlacement(screenX, screenY);
     } else if (tool === 'delete') {
       this.handleDelete(screenX, screenY);
+    } else if (tool === 'connect') {
+      this.handleConnect(screenX, screenY);
     }
-    // 'pan', 'connect', 'edit': no-op here — handled elsewhere
+    // 'pan', 'edit': no-op here — handled elsewhere
+  };
+
+  private handlePointerMove = (e: PointerEvent) => {
+    const tool = useUIStore.getState().tool;
+    if (tool !== 'connect') {
+      this.previewGraphics.clear();
+      return;
+    }
+
+    const rect = this.canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const world = this.camera.screenToWorld(screenX, screenY);
+
+    // Snap mouse position to grid for a clean preview
+    const snappedX = snapToGrid(world.x, GRID_SIZE);
+    const snappedY = snapToGrid(world.y, GRID_SIZE);
+    this.mouseWorldX = snappedX;
+    this.mouseWorldY = snappedY;
+
+    this.renderPreview();
   };
 
   private handleStationPlacement(screenX: number, screenY: number) {
@@ -93,10 +135,149 @@ export class InteractionManager {
 
     if (nearestId !== null) {
       useMapStore.getState().deleteStation(nearestId);
+      // Deselect if we just deleted the selected station
+      if (useUIStore.getState().selectedStationId === nearestId) {
+        useUIStore.getState().selectStation(null);
+      }
+    }
+  }
+
+  private handleConnect(screenX: number, screenY: number) {
+    const world = this.camera.screenToWorld(screenX, screenY);
+    const stations = useMapStore.getState().stations;
+
+    // Find the nearest station within hit radius
+    let nearestId: string | null = null;
+    let nearestDist = CONNECT_HIT_RADIUS;
+
+    for (const station of stations) {
+      const stationPx = station.x * GRID_SIZE;
+      const stationPy = station.y * GRID_SIZE;
+      const dist = Math.hypot(stationPx - world.x, stationPy - world.y);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestId = station.id;
+      }
+    }
+
+    if (nearestId === null) {
+      // Clicked empty space — cancel connection
+      this.connectSourceId = null;
+      useUIStore.getState().selectStation(null);
+      this.previewGraphics.clear();
+      return;
+    }
+
+    if (this.connectSourceId === null) {
+      // First click: set the source station and highlight it
+      this.connectSourceId = nearestId;
+      useUIStore.getState().selectStation(nearestId);
+      return;
+    }
+
+    if (nearestId === this.connectSourceId) {
+      // Clicked the same station again — cancel
+      this.connectSourceId = null;
+      useUIStore.getState().selectStation(null);
+      this.previewGraphics.clear();
+      return;
+    }
+
+    // Second click on a different station — create the track
+    const { lines, addTrack } = useMapStore.getState();
+
+    // Use the first available line, or do nothing if no lines exist
+    if (lines.length === 0) {
+      console.warn('No lines exist. Create a line first before connecting stations.');
+      this.connectSourceId = null;
+      useUIStore.getState().selectStation(null);
+      this.previewGraphics.clear();
+      return;
+    }
+
+    // Use the first line as the active line
+    const activeLineId = lines[0].id;
+
+    addTrack(activeLineId, this.connectSourceId, nearestId);
+
+    // Reset state
+    this.connectSourceId = null;
+    useUIStore.getState().selectStation(null);
+    this.previewGraphics.clear();
+  }
+
+  /**
+   * Draws a dashed preview line from the source station to the current mouse
+   * position when the connect tool is active and a source has been picked.
+   */
+  private renderPreview() {
+    this.previewGraphics.clear();
+
+    if (this.connectSourceId === null) return;
+
+    const stations = useMapStore.getState().stations;
+    const source = stations.find((s) => s.id === this.connectSourceId);
+    if (!source) return;
+
+    const lines = useMapStore.getState().lines;
+    const activeLineColor = lines.length > 0 ? lines[0].color : '#ffffff';
+
+    const sx = source.x * GRID_SIZE;
+    const sy = source.y * GRID_SIZE;
+    const tx = this.mouseWorldX;
+    const ty = this.mouseWorldY;
+
+    // Dashed line: draw short segments manually (PixiJS v8 has no native dash support)
+    const DASH_LEN = 10;
+    const GAP_LEN = 6;
+
+    // Horizontal segment first (manhattan), then vertical
+    const mx = tx; // corner point
+    const my = sy;
+
+    this.drawDashedLine(sx, sy, mx, my, DASH_LEN, GAP_LEN, activeLineColor);
+    this.drawDashedLine(mx, my, tx, ty, DASH_LEN, GAP_LEN, activeLineColor);
+  }
+
+  private drawDashedLine(
+    x1: number, y1: number,
+    x2: number, y2: number,
+    dashLen: number, gapLen: number,
+    color: string,
+  ) {
+    const totalLen = Math.hypot(x2 - x1, y2 - y1);
+    if (totalLen < 1) return;
+
+    const dx = (x2 - x1) / totalLen;
+    const dy = (y2 - y1) / totalLen;
+
+    let traveled = 0;
+    let drawing = true;
+
+    while (traveled < totalLen) {
+      const segLen = drawing ? dashLen : gapLen;
+      const end = Math.min(traveled + segLen, totalLen);
+
+      if (drawing) {
+        const ax = x1 + dx * traveled;
+        const ay = y1 + dy * traveled;
+        const bx = x1 + dx * end;
+        const by = y1 + dy * end;
+        this.previewGraphics.moveTo(ax, ay).lineTo(bx, by);
+      }
+
+      traveled = end;
+      drawing = !drawing;
+    }
+
+    if (totalLen > 0) {
+      this.previewGraphics.stroke({ color, width: 2, alpha: 0.7 });
     }
   }
 
   destroy() {
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
+    this.canvas.removeEventListener('pointermove', this.handlePointerMove);
+    this.previewGraphics.destroy();
   }
 }

@@ -3,6 +3,7 @@ import { PixiApp } from '../../engine/PixiApp';
 import { GridRenderer } from '../../engine/GridRenderer';
 import { CameraController } from '../../engine/CameraController';
 import { StationRenderer } from '../../engine/StationRenderer';
+import { TrackRenderer } from '../../engine/TrackRenderer';
 import { InteractionManager } from '../../engine/InteractionManager';
 import { StationNameDialog } from '../track-design/StationNameDialog';
 import { useMapStore } from '../../stores/mapStore';
@@ -70,6 +71,10 @@ export function GameCanvas() {
       const camera = new CameraController(pixiApp, grid);
       camera.updateGrid();
 
+      // Renders tracks; subscribes to mapStore & uiStore internally
+      // Created before StationRenderer so tracks appear below stations
+      const trackRenderer = new TrackRenderer(pixiApp);
+
       // Renders stations; subscribes to mapStore & uiStore internally
       const stationRenderer = new StationRenderer(pixiApp);
 
@@ -81,6 +86,7 @@ export function GameCanvas() {
       cleanupFn = () => {
         interaction.destroy();
         stationRenderer.destroy();
+        trackRenderer.destroy();
         camera.destroy();
         pixiApp.destroy();
         resolveThisDone();
