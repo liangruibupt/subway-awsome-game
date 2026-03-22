@@ -490,7 +490,7 @@ export class AssemblyRenderer {
     let x = startX;
 
     // Head car
-    this.drawSideHead(x, baseY, train.style);
+    this.drawSideHead(x, baseY, train.head);
     x += SIDE_HEAD_W + SIDE_GAP;
 
     // Filled carriages
@@ -516,23 +516,24 @@ export class AssemblyRenderer {
 
   // ─── Side-view: head car ────────────────────────────────────────────────────
 
-  private drawSideHead(x: number, baseY: number, style: TrainStyle) {
+  private drawSideHead(x: number, baseY: number, head: TrainHead) {
+    const theme  = getHeadTheme(head);
     const W      = SIDE_HEAD_W;
     const H      = SIDE_STD_H;
     const topY   = baseY - H;
-    const body   = hexToNumber(style.bodyColor);
-    const accent = hexToNumber(style.accentColor);
+    const body   = hexToNumber(theme.body);
+    const accent = hexToNumber(theme.accent);
 
     const g = new Graphics();
 
     // Body (rounded corners)
     g.roundRect(x, topY, W, H, 5).fill({ color: body });
 
-    // Pattern overlay
-    this.applySidePattern(g, x, topY, W, H, style);
+    // Accent stripe pattern for head (using city theme)
+    // No custom pattern on head — just the accent stripe below
 
-    // Windshield (left/front side)
-    g.roundRect(x + 4, topY + 8, 12, H - 16, 2).fill({ color: 0x74b9ff, alpha: 0.5 });
+    // Windshield (left/front side) — city theme tint
+    g.roundRect(x + 4, topY + 8, 12, H - 16, 2).fill({ color: theme.windshield, alpha: 0.7 });
 
     // Body windows
     const winY = topY + 10;
@@ -540,9 +541,9 @@ export class AssemblyRenderer {
     g.roundRect(x + 26, winY, 14, winH, 2).fill({ color: 0x1e272e, alpha: 0.8 });
     g.roundRect(x + 48, winY, 14, winH, 2).fill({ color: 0x1e272e, alpha: 0.8 });
 
-    // Headlights (left edge)
-    g.circle(x + 5, baseY - 10, 3.5).fill({ color: 0xffd93d });
-    g.circle(x + 5, baseY - 22, 3.5).fill({ color: 0xffd93d });
+    // Headlights (left edge) — city theme glow
+    g.circle(x + 5, baseY - 10, 3.5).fill({ color: theme.lightColor });
+    g.circle(x + 5, baseY - 22, 3.5).fill({ color: theme.lightColor });
 
     // Accent stripe along bottom
     g.rect(x + 18, baseY - 6, W - 20, 3).fill({ color: accent, alpha: 0.85 });
