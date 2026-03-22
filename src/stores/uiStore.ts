@@ -13,6 +13,11 @@ interface UIState {
   assemblyPhase: 'head-selection' | 'carriage-building';
   selectedCarriageIndex: number | null;
   activeTrainIndex: number;
+  // Challenge mode
+  challengeId: string | null;
+  challengeStars: Record<string, number>;
+  showLevelSelect: boolean;
+  showVictory: boolean;
   setMode: (mode: GameMode) => void;
   setTool: (tool: TrackTool) => void;
   selectStation: (id: string | null) => void;
@@ -23,6 +28,10 @@ interface UIState {
   setAssemblyPhase: (phase: 'head-selection' | 'carriage-building') => void;
   selectCarriage: (index: number | null) => void;
   setActiveTrainIndex: (index: number) => void;
+  setChallengeId: (id: string | null) => void;
+  setChallengeStars: (stars: Record<string, number>) => void;
+  setShowLevelSelect: (show: boolean) => void;
+  setShowVictory: (show: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -37,6 +46,11 @@ export const useUIStore = create<UIState>((set) => ({
   assemblyPhase: 'head-selection',
   selectedCarriageIndex: null,
   activeTrainIndex: 0,
+  // Challenge mode defaults
+  challengeId: null,
+  challengeStars: {},
+  showLevelSelect: false,
+  showVictory: false,
   setMode: (mode) => set({ mode }),
   setTool: (tool) => set({ tool }),
   selectStation: (id) => set({ selectedStationId: id }),
@@ -47,4 +61,8 @@ export const useUIStore = create<UIState>((set) => ({
   setAssemblyPhase: (phase) => set({ assemblyPhase: phase, selectedCarriageIndex: null }),
   selectCarriage: (index) => set({ selectedCarriageIndex: index }),
   setActiveTrainIndex: (index) => set({ activeTrainIndex: index }),
+  setChallengeId: (id) => set({ challengeId: id }),
+  setChallengeStars: (stars) => set({ challengeStars: stars }),
+  setShowLevelSelect: (show) => set({ showLevelSelect: show }),
+  setShowVictory: (show) => set({ showVictory: show }),
 }));
