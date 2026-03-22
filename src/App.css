@@ -249,3 +249,42 @@ body {
   color: #1a3a5c;
   font-size: 12px;
 }
+
+/* ── Save / Load bar ── */
+.save-load-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.save-btn {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+  height: 20px;
+  line-height: 1;
+  transition: opacity 0.15s, filter 0.15s;
+  color: #060e1f;
+}
+
+.save-btn:hover {
+  filter: brightness(1.15);
+}
+
+.save-btn--green  { background: #00b894; border-color: #00b894; }
+.save-btn--cyan   { background: #81ecec; border-color: #81ecec; }
+.save-btn--purple { background: #a29bfe; border-color: #a29bfe; }
+
+.save-toast {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #ffd93d;
+  margin-right: 4px;
+}

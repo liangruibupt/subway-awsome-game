@@ -21,6 +21,7 @@ interface TrainState {
   updateCarriageStyle: (trainId: string, carriageIndex: number, style: TrainStyle) => void;
   assignToLine: (trainId: string, lineId: string) => void;
   getTrainCapacity: (trainId: string) => number;
+  loadState: (trains: Train[]) => void;
   reset: () => void;
 }
 
@@ -69,5 +70,6 @@ export const useTrainStore = create<TrainState>((set, get) => ({
     if (!train) return 0;
     return HEAD_CAPACITY + train.carriages.reduce((sum, c) => sum + (c.type === 'widebody' ? WIDEBODY_CAPACITY : STANDARD_CAPACITY), 0);
   },
+  loadState: (trains) => set({ trains }),
   reset: () => set({ trains: [] }),
 }));

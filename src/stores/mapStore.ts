@@ -17,6 +17,7 @@ interface MapState {
   addTrack: (lineId: string, stationAId: string, stationBId: string) => void;
   deleteTrack: (id: string) => void;
   updateTrackPath: (trackId: string, newPath: { x: number; y: number }[]) => void;
+  loadState: (data: { gridSize: number; stations: Station[]; tracks: Track[]; lines: Line[] }) => void;
   reset: () => void;
 }
 
@@ -134,6 +135,13 @@ export const useMapStore = create<MapState>((set, get) => ({
   updateTrackPath: (trackId, newPath) => set(state => ({
     tracks: state.tracks.map(t => t.id === trackId ? { ...t, path: newPath } : t),
   })),
+
+  loadState: (data) => set({
+    gridSize: data.gridSize,
+    stations: data.stations,
+    tracks: data.tracks,
+    lines: data.lines,
+  }),
 
   reset: () => set(initialState),
 }));

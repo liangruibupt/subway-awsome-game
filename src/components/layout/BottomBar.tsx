@@ -1,4 +1,5 @@
 import { useUIStore } from '../../stores/uiStore';
+import { SaveLoadBar } from '../shared/SaveLoadBar';
 
 export function BottomBar() {
   const zoomLevel = useUIStore((s) => s.zoomLevel);
@@ -13,6 +14,8 @@ export function BottomBar() {
       <span className="bottom-bar-item">ZOOM: {zoomPercent}%</span>
       <span className="bottom-bar-sep">|</span>
       <span className="bottom-bar-item">POS: ({mouseGridX}, {mouseGridY})</span>
+      <div style={{ flex: 1 }} />
+      <SaveLoadBar />
     </div>
   );
 }
