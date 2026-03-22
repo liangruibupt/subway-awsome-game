@@ -39,6 +39,16 @@ export class CameraController {
     window.addEventListener('keyup', this.handleKeyUp);
   }
 
+  /** Converts canvas-relative screen coordinates to world coordinates. */
+  screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
+    const wc = this.pixiApp.worldContainer;
+    const scale = wc.scale.x;
+    return {
+      x: (screenX - wc.x) / scale,
+      y: (screenY - wc.y) / scale,
+    };
+  }
+
   /** Re-renders the grid to match the current viewport. Call after any pan/zoom. */
   updateGrid() {
     const wc = this.pixiApp.worldContainer;

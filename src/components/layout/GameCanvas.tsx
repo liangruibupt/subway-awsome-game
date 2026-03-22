@@ -1,10 +1,27 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PixiApp } from '../../engine/PixiApp';
 import { GridRenderer } from '../../engine/GridRenderer';
 import { CameraController } from '../../engine/CameraController';
+import { StationRenderer } from '../../engine/StationRenderer';
+import { InteractionManager } from '../../engine/InteractionManager';
+import { StationNameDialog } from '../track-design/StationNameDialog';
+import { useMapStore } from '../../stores/mapStore';
+
+interface PendingStation {
+  gridX: number;
+  gridY: number;
+}
 
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Dialog state — lives in React so the overlay re-renders correctly
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [pending, setPending] = useState<PendingStation>({ gridX: 0, gridY: 0 });
+
+  // Stable ref to the "open dialog" callback so InteractionManager can call
+  // it without needing a re-render or stale-closure issues.
+  const openDialogRef = useRef<(gridX: number, gridY: number) => void>(() => {});
 
   // Holds the promise for the current init cycle so that a strict-mode re-run
   // waits for the previous init to finish and release the WebGL context before
@@ -53,7 +70,17 @@ export function GameCanvas() {
       const camera = new CameraController(pixiApp, grid);
       camera.updateGrid();
 
+      // Renders stations; subscribes to mapStore & uiStore internally
+      const stationRenderer = new StationRenderer(pixiApp);
+
+      // Handles canvas click interactions; calls openDialogRef when placing stations
+      const interaction = new InteractionManager(pixiApp, camera, (gridX, gridY) => {
+        openDialogRef.current(gridX, gridY);
+      });
+
       cleanupFn = () => {
+        interaction.destroy();
+        stationRenderer.destroy();
         camera.destroy();
         pixiApp.destroy();
         resolveThisDone();
@@ -74,9 +101,35 @@ export function GameCanvas() {
     };
   }, []);
 
+  // Keep the stable ref up-to-date with the current state setters.
+  // This runs on every render but is very cheap.
+  useEffect(() => {
+    openDialogRef.current = (gridX: number, gridY: number) => {
+      setPending({ gridX, gridY });
+      setDialogOpen(true);
+    };
+  });
+
+  const handleDialogConfirm = (name: string) => {
+    useMapStore.getState().addStation(name, pending.gridX, pending.gridY);
+    setDialogOpen(false);
+  };
+
+  const handleDialogCancel = () => {
+    setDialogOpen(false);
+  };
+
   return (
     <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+
+      {/* Station naming dialog — React overlay on top of the PixiJS canvas */}
+      <StationNameDialog
+        isOpen={dialogOpen}
+        onConfirm={handleDialogConfirm}
+        onCancel={handleDialogCancel}
+        position={{ x: pending.gridX, y: pending.gridY }}
+      />
     </div>
   );
 }
