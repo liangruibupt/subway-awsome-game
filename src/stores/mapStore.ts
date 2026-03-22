@@ -10,6 +10,7 @@ interface MapState {
   lines: Line[];
   addStation: (name: string, x: number, y: number) => void;
   renameStation: (id: string, name: string) => void;
+  moveStation: (id: string, x: number, y: number) => void;
   deleteStation: (id: string) => void;
   addLine: (name: string, color: string) => void;
   deleteLine: (id: string) => void;
@@ -38,6 +39,20 @@ export const useMapStore = create<MapState>((set, get) => ({
   renameStation: (id, name) => set(state => ({
     stations: state.stations.map(s => s.id === id ? { ...s, name } : s),
   })),
+
+  moveStation: (id, x, y) => {
+    const state = get();
+    // Update station position
+    const updatedStations = state.stations.map(s => s.id === id ? { ...s, x, y } : s);
+    // Rebuild track paths that connect to this station
+    const updatedTracks = state.tracks.map(t => {
+      if (t.stationAId !== id && t.stationBId !== id) return t;
+      const stA = (t.stationAId === id ? { x, y } : updatedStations.find(s => s.id === t.stationAId)) ?? { x: 0, y: 0 };
+      const stB = (t.stationBId === id ? { x, y } : updatedStations.find(s => s.id === t.stationBId)) ?? { x: 0, y: 0 };
+      return { ...t, path: manhattanPath(stA, stB) };
+    });
+    set({ stations: updatedStations, tracks: updatedTracks });
+  },
 
   deleteStation: (id) => set(state => ({
     stations: state.stations.filter(s => s.id !== id),
