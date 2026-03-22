@@ -96,7 +96,7 @@ export function StationNameDialog({ isOpen, onConfirm, onCancel, position }: Sta
         <div
           style={{
             fontSize: 11,
-            color: '#636e72',
+            color: '#b2bec3',
             fontFamily: 'monospace',
           }}
         >
@@ -130,7 +130,7 @@ export function StationNameDialog({ isOpen, onConfirm, onCancel, position }: Sta
             style={{
               padding: '9px 20px',
               borderRadius: 8,
-              border: '1.5px solid #636e72',
+              border: '1.5px solid #b2bec3',
               background: 'transparent',
               color: '#b2bec3',
               fontSize: 14,

@@ -55,7 +55,7 @@ export function LineList() {
 
       {/* Line list */}
       {lines.length === 0 && (
-        <div style={{ fontSize: 12, color: '#636e72', fontStyle: 'italic' }}>
+        <div style={{ fontSize: 12, color: '#b2bec3', fontStyle: 'italic' }}>
           No lines yet — add one below!
         </div>
       )}
@@ -196,7 +196,7 @@ export function LineList() {
                 flex: 1,
                 padding: '7px 0',
                 borderRadius: 6,
-                border: '1px solid #636e72',
+                border: '1px solid #b2bec3',
                 background: 'transparent',
                 color: '#b2bec3',
                 fontSize: 12,

@@ -149,7 +149,7 @@ export function StationProperties() {
       )}
 
       {stationLines.length === 0 && (
-        <div style={{ fontSize: 11, color: '#636e72', fontStyle: 'italic' }}>
+        <div style={{ fontSize: 11, color: '#b2bec3', fontStyle: 'italic' }}>
           Not on any line yet — use the Connect tool to link it!
         </div>
       )}
