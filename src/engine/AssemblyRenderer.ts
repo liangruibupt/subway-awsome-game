@@ -38,6 +38,21 @@ function darken(hex: string, amount: number): string {
   return rgbToHex(r - amount, g - amount, b - amount);
 }
 
+// ─── Per-city head color themes ──────────────────────────────────────────────
+
+const HEAD_THEMES: Record<string, { body: string; accent: string; windshield: number; lightColor: number }> = {
+  'tokyo':   { body: '#e8e8e8', accent: '#e74c3c', windshield: 0x2c3e50, lightColor: 0xffeaa7 },
+  'beijing': { body: '#5dade2', accent: '#ecf0f1', windshield: 0x12202e, lightColor: 0xf9e79f },
+  'london':  { body: '#c0392b', accent: '#f1c40f', windshield: 0x1a1a2e, lightColor: 0xffd93d },
+  'newyork': { body: '#7f8c8d', accent: '#f39c12', windshield: 0x1e272e, lightColor: 0xffeaa7 },
+  'neo':     { body: '#2d3436', accent: '#00cec9', windshield: 0x0a1628, lightColor: 0x00cec9 },
+  'quantum': { body: '#6c5ce7', accent: '#fd79a8', windshield: 0x0a0a1e, lightColor: 0xa29bfe },
+};
+
+function getHeadTheme(head: TrainHead) {
+  return HEAD_THEMES[head.city] ?? { body: '#0984e3', accent: '#ffd93d', windshield: 0x1e272e, lightColor: 0xffd93d };
+}
+
 // ─── Phase 1 (isometric) constants ────────────────────────────────────────────
 
 const ISO_CAR_W = 60;
@@ -468,6 +483,7 @@ export class AssemblyRenderer {
     return ct;
   }
 
+  // @ts-ignore — kept for future carriage iso rendering
   private applyIsoPattern(
     ct: Container,
     px: number, py: number,
@@ -500,32 +516,47 @@ export class AssemblyRenderer {
     ct.addChild(gfx);
   }
 
-  private drawIsoHeadCar(px: number, py: number, head: TrainHead, style: TrainStyle) {
-    const bodyHex   = style.bodyColor;
+  private drawIsoHeadCar(px: number, py: number, head: TrainHead, _style: TrainStyle) {
+    const theme = getHeadTheme(head);
+    // Use the city theme's body color for the head (not the user's style color)
+    const bodyHex   = theme.body;
     const topColor  = hexToNumber(lighten(bodyHex, 55));
     const sideColor = hexToNumber(bodyHex);
     const endColor  = hexToNumber(darken(bodyHex, 45));
+    const accentN   = hexToNumber(theme.accent);
     const depth = ISO_STD_DEPTH;
     const dX    = Math.round(depth * 0.28);
     const dY    = -Math.round(depth * 0.55);
 
     const ct = this.buildIsoBox(px, py, ISO_CAR_W, ISO_CAR_H, depth, topColor, sideColor, endColor);
-    this.applyIsoPattern(ct, px, py, ISO_CAR_W, ISO_CAR_H, style);
 
-    // Windshield
+    // Accent stripe across the side face (city-specific color)
+    const stripe = new Graphics();
+    const stripeY = py - Math.round(ISO_CAR_H * 0.45);
+    stripe.rect(px + 2, stripeY, ISO_CAR_W - 4, 5).fill({ color: accentN, alpha: 0.85 });
+    ct.addChild(stripe);
+
+    // Windshield (city-specific tint)
     const windshield = new Graphics();
     windshield.poly([
       px + 1,      py - ISO_CAR_H + 6,
       px + dX - 1, py - ISO_CAR_H + dY + 6,
       px + dX - 1, py - ISO_CAR_H + dY + Math.round(ISO_CAR_H * 0.56),
       px + 1,      py - ISO_CAR_H + Math.round(ISO_CAR_H * 0.56),
-    ]).fill({ color: 0x74b9ff, alpha: 0.55 });
+    ]).fill({ color: theme.windshield, alpha: 0.7 });
+    // Windshield reflection
+    windshield.poly([
+      px + 2,      py - ISO_CAR_H + 8,
+      px + dX - 3, py - ISO_CAR_H + dY + 8,
+      px + dX - 5, py - ISO_CAR_H + dY + 14,
+      px + 2,      py - ISO_CAR_H + 14,
+    ]).fill({ color: 0x5dade2, alpha: 0.15 });
     ct.addChild(windshield);
 
-    // Headlights
+    // Headlights (city-specific glow color)
     const lights = new Graphics();
-    lights.circle(px + 7,  py - 10, 3.5).fill({ color: 0xffd93d, alpha: 1 });
-    lights.circle(px + 18, py - 10, 3.5).fill({ color: 0xffd93d, alpha: 1 });
+    lights.circle(px + 7,  py - 10, 3.5).fill({ color: theme.lightColor, alpha: 1 });
+    lights.circle(px + 18, py - 10, 3.5).fill({ color: theme.lightColor, alpha: 1 });
     ct.addChild(lights);
 
     // Windows
@@ -536,9 +567,9 @@ export class AssemblyRenderer {
     wins.rect(px + 30, winY, 13, winH).fill({ color: 0x1e272e, alpha: 0.78 });
     ct.addChild(wins);
 
-    // Route badge
+    // Route badge with accent color
     const badge = new Graphics();
-    badge.rect(px + 7, py - ISO_CAR_H + 2, 22, 7).fill({ color: hexToNumber(style.accentColor), alpha: 0.9 });
+    badge.rect(px + 7, py - ISO_CAR_H + 2, 22, 7).fill({ color: accentN, alpha: 0.9 });
     ct.addChild(badge);
 
     // Outline
@@ -547,8 +578,27 @@ export class AssemblyRenderer {
            .stroke({ color: 0xffffff, width: 0.5, alpha: 0.2 });
     ct.addChild(outline);
 
+    // City name label below the head
+    const label = new Text({
+      text: head.city.charAt(0).toUpperCase() + head.city.slice(1),
+      style: { fontFamily: 'monospace', fontSize: 11, fill: '#dfe6e9', fontWeight: 'bold' },
+    });
+    label.anchor.set(0.5, 0);
+    label.x = px + ISO_CAR_W / 2;
+    label.y = py + 8;
+    ct.addChild(label);
+
+    // Era tag
+    const eraLabel = new Text({
+      text: head.era.toUpperCase(),
+      style: { fontFamily: 'monospace', fontSize: 8, fill: '#b2bec3' },
+    });
+    eraLabel.anchor.set(0.5, 0);
+    eraLabel.x = px + ISO_CAR_W / 2;
+    eraLabel.y = py + 22;
+    ct.addChild(eraLabel);
+
     this.trainContainer.addChild(ct);
-    void head;
   }
 
   // ─── Angle label helpers (Phase 1) ─────────────────────────────────────────
