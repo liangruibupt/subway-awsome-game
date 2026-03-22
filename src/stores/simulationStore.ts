@@ -15,7 +15,7 @@ const initialState: SimulationState = {
   stats: { totalPassengers: 0, onTimeRate: 100, byLine: {} },
 };
 
-export const useSimulationStore = create<SimStore>((set, get) => ({
+export const useSimulationStore = create<SimStore>((set) => ({
   ...initialState,
   setSpeed: (speed) => set({ speed }),
   togglePause: () => set(state => ({ paused: !state.paused })),
