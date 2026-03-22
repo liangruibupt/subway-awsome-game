@@ -132,6 +132,7 @@ Visual difference must be immediately obvious in the isometric view.
   - Tokyo: streamlined rounded nose, large curved windshield, red stripe band
   - Beijing: rounded flat face, dual round headlights, blue-white scheme, LED route number display
   - (More styles to be designed for London, New York, Future, etc.)
+  - MVP ships with 2 city styles per era = 6 total train head variants
 
 ### 3. Run Simulation Mode (Blueprint/Tech Style)
 
@@ -153,6 +154,12 @@ Visual difference must be immediately obvious in the isometric view.
 - Small yellow dots animate from station to train (boarding) and train to station (alighting)
 - Dwell time: configurable per station (default ~10 simulated seconds)
 
+**Train Deployment:**
+- Before entering Run mode, player assigns trains to lines via a deployment panel
+- In the right panel, each line shows a "Deploy Train" button
+- Click to select a pre-assembled train from inventory, then confirm assignment
+- Multiple trains can be assigned to the same line (they auto-space evenly)
+
 **Speed Controls (Top Bar):**
 - 1x / 2x / 4x speed multiplier buttons
 - Play / Pause toggle
@@ -164,6 +171,31 @@ Visual difference must be immediately obvious in the isometric view.
 - On-time rate progress bar
 - Per-line status: line color, name, status (RUNNING/AT STN), train count, passenger count
 - Click any train to see detail: car count, capacity bar (passengers/max), next station, speed, current status
+
+**Simulation Rules:**
+
+*Passenger Generation:*
+- Passengers spawn at stations over time as visual dots
+- Base rate: 2-5 passengers per station per simulated minute
+- Rush hour multiplier (8 AM, 6 PM): 3x base rate
+- Passengers have no origin/destination — they board the next train that arrives and alight at a random subsequent station. This keeps the simulation simple and visual without complex routing.
+
+*Train Capacity:*
+- Standard carriage: 60 passengers per car
+- Wide-body carriage: 80 passengers per car
+- Head car: 40 passengers
+- Example: 1 head + 4 standard + 2 wide-body = 40 + 240 + 160 = 440 max
+
+*Train Traversal:*
+- Each line has an ordered station list (see `Line.stationIds` in data model)
+- Trains shuttle back-and-forth: travel from first station to last, then reverse direction
+- Travel speed between stations: ~80 km/h simulated, scaled to grid distance
+- Dwell time at each station: 10 simulated seconds (configurable)
+
+*On-Time Rate:*
+- Expected interval: calculated from line length and train count (evenly spaced)
+- A train is "on time" if it arrives at each station within ±30 simulated seconds of expected interval
+- On-time rate = (on-time arrivals / total arrivals) * 100%
 
 **Bottom Status Bar:**
 - Simulated time display
@@ -187,7 +219,7 @@ Visual difference must be immediately obvious in the isometric view.
 - Assigned lines (auto-tagged with line colors)
 - Platform length (determines max train length, default: 8 cars)
 
-## Game Modes
+## Gameplay Modes
 
 ### Sandbox Mode
 - No objectives or constraints
@@ -196,6 +228,13 @@ Visual difference must be immediately obvious in the isometric view.
 - Focus on creative expression
 
 ### Challenge Mode
+
+Challenge mode is included in MVP with 3 tutorial/introductory levels. More levels can be added post-launch.
+
+**MVP Levels:**
+1. **"First Line"** — Build a single line connecting 3 given stations. Tutorial level teaching basic placement and connection.
+2. **"Crosstown"** — Connect 5 residential zones using no more than 2 lines. Introduces interchange stations.
+3. **"Rush Hour"** — Given a pre-built 3-line network, assemble and deploy trains to transport 5,000 passengers in 10 simulated minutes while maintaining 85%+ on-time rate.
 
 **Level Structure:**
 - Each level provides a city layout with buildings, rivers, residential zones
@@ -206,19 +245,20 @@ Visual difference must be immediately obvious in the isometric view.
 
 **Star Rating:**
 - 1 star: complete basic objective
-- 2 stars: complete within budget/time constraints
+- 2 stars: complete within time/line-count constraints
 - 3 stars: optimal solution (fewest lines, highest efficiency)
 
 **Rewards:**
 - Unlock new train head types
 - Unlock new city styles
 - Unlock new patterns and colors
+- Rewards apply to Challenge Mode only. Sandbox Mode has all content unlocked from the start.
 
 ## Map / Canvas
 
 **MVP:**
 - Blank grid canvas (infinite, no boundaries)
-- Simple city elements as background: basic building blocks, river/water areas
+- Simple city elements as background: auto-generated basic building blocks and river/water areas (decorative, not player-placed)
 
 **Future Expansion:**
 - Real city map loading: player enters a city name, game downloads and renders a simplified map
@@ -265,6 +305,7 @@ interface Line {
   id: string;
   name: string;
   color: string;                   // hex color
+  stationIds: string[];            // ordered list of stations on this line
 }
 
 interface Train {
