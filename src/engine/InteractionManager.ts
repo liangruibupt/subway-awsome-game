@@ -9,6 +9,23 @@ import { Quadtree } from './Quadtree';
 const GRID_SIZE = 30;
 const WORLD_SIZE = 10_000;
 const HIT_RADIUS = 20;
+const TRACK_HIT_DIST = 15;    // world pixels — how close a click must be to select a track
+const WAYPOINT_HIT_RADIUS = 10; // world pixels — how close a click must be to grab a waypoint
+
+/** Point-to-segment distance used for track hit-testing. */
+function pointToSegmentDist(
+  px: number, py: number,
+  x1: number, y1: number,
+  x2: number, y2: number,
+): number {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projX = x1 + t * dx, projY = y1 + t * dy;
+  return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
+}
 
 type StationPlacementCallback = (gridX: number, gridY: number) => void;
 
@@ -29,9 +46,16 @@ export class InteractionManager {
   private pointerDownX = 0;
   private pointerDownY = 0;
 
+  // Edit tool state
+  private editSelectedTrackId: string | null = null;
+  private editDragWaypointIdx: number | null = null;
+  private editDragPath: { x: number; y: number }[] | null = null;
+  private editHandlesGraphics: Graphics;
+
   // Quadtree
   private stationQuadtree: Quadtree;
   private unsubscribeMapStore: () => void;
+  private unsubscribeUIStore: () => void;
 
   constructor(
     pixiApp: PixiApp,
@@ -45,11 +69,28 @@ export class InteractionManager {
     this.previewGraphics = new Graphics();
     pixiApp.worldContainer.addChild(this.previewGraphics);
 
+    this.editHandlesGraphics = new Graphics();
+    pixiApp.worldContainer.addChild(this.editHandlesGraphics);
+
     this.stationQuadtree = new Quadtree({ x: 0, y: 0, w: WORLD_SIZE, h: WORLD_SIZE });
     this.rebuildQuadtree();
     this.unsubscribeMapStore = useMapStore.subscribe((state, prev) => {
       if (state.stations !== prev.stations) {
         this.rebuildQuadtree();
+      }
+      // Re-render handles when tracks update (e.g. after path commit)
+      if (state.tracks !== prev.tracks && this.editSelectedTrackId !== null) {
+        this.editDragPath = null;
+        this.renderEditHandles();
+      }
+    });
+    this.unsubscribeUIStore = useUIStore.subscribe((state, prev) => {
+      // Clear edit selection when switching away from the edit tool
+      if (state.tool !== prev.tool && state.tool !== 'edit') {
+        this.editSelectedTrackId = null;
+        this.editDragWaypointIdx = null;
+        this.editDragPath = null;
+        this.editHandlesGraphics.clear();
       }
     });
 
@@ -84,6 +125,9 @@ export class InteractionManager {
       this.handleDelete(screenX, screenY);
     } else if (tool === 'connect') {
       this.handleConnect(screenX, screenY);
+    } else if (tool === 'edit') {
+      const world = this.camera.screenToWorld(screenX, screenY);
+      this.handleEditPointerDown(world.x, world.y);
     }
   };
 
@@ -110,6 +154,18 @@ export class InteractionManager {
       return;
     }
 
+    // Handle edit tool — drag a waypoint
+    if (tool === 'edit' && this.editDragWaypointIdx !== null && this.editDragPath !== null) {
+      const world = this.camera.screenToWorld(screenX, screenY);
+      const snappedX = snapToGrid(world.x, GRID_SIZE);
+      const snappedY = snapToGrid(world.y, GRID_SIZE);
+      const gridX = Math.round(snappedX / GRID_SIZE);
+      const gridY = Math.round(snappedY / GRID_SIZE);
+      this.editDragPath[this.editDragWaypointIdx] = { x: gridX, y: gridY };
+      this.renderEditHandles();
+      return;
+    }
+
     // Handle connect preview
     if (tool === 'connect') {
       const world = this.camera.screenToWorld(screenX, screenY);
@@ -123,6 +179,22 @@ export class InteractionManager {
 
   private handlePointerUp = (e: PointerEvent) => {
     const tool = useUIStore.getState().tool;
+
+    if (tool === 'edit') {
+      // Commit waypoint drag if one was in progress
+      if (
+        this.editDragWaypointIdx !== null &&
+        this.editDragPath !== null &&
+        this.editSelectedTrackId !== null
+      ) {
+        useMapStore.getState().updateTrackPath(this.editSelectedTrackId, this.editDragPath);
+        // editDragPath and editDragWaypointIdx are cleared by the mapStore subscriber
+        this.editDragWaypointIdx = null;
+        this.editDragPath = null;
+        this.renderEditHandles();
+      }
+      return;
+    }
 
     if (tool === 'station') {
       if (this.draggingStationId) {
@@ -212,6 +284,107 @@ export class InteractionManager {
     this.previewGraphics.clear();
   }
 
+  // ─── Edit Tool ─────────────────────────────────────────────────────────────
+
+  private handleEditPointerDown(wx: number, wy: number) {
+    // 1. Check if clicking near a waypoint of the currently selected track → start drag
+    if (this.editSelectedTrackId !== null) {
+      const track = useMapStore.getState().tracks.find(t => t.id === this.editSelectedTrackId);
+      if (track) {
+        const idx = this.findNearestWaypoint(wx, wy, track.path);
+        if (idx !== null) {
+          this.editDragWaypointIdx = idx;
+          this.editDragPath = track.path.map(p => ({ ...p }));
+          return;
+        }
+      }
+    }
+
+    // 2. Check if clicking near any track segment → select that track
+    const trackId = this.findNearestTrack(wx, wy);
+    if (trackId !== null) {
+      this.editSelectedTrackId = trackId;
+      this.editDragWaypointIdx = null;
+      this.editDragPath = null;
+      this.renderEditHandles();
+      return;
+    }
+
+    // 3. Clicked empty space → deselect
+    this.editSelectedTrackId = null;
+    this.editDragWaypointIdx = null;
+    this.editDragPath = null;
+    this.editHandlesGraphics.clear();
+  }
+
+  private findNearestTrack(wx: number, wy: number): string | null {
+    const tracks = useMapStore.getState().tracks;
+    let bestId: string | null = null;
+    let bestDist = TRACK_HIT_DIST;
+
+    for (const track of tracks) {
+      const path = track.path;
+      for (let i = 0; i + 1 < path.length; i++) {
+        const x1 = path[i].x * GRID_SIZE;
+        const y1 = path[i].y * GRID_SIZE;
+        const x2 = path[i + 1].x * GRID_SIZE;
+        const y2 = path[i + 1].y * GRID_SIZE;
+        const dist = pointToSegmentDist(wx, wy, x1, y1, x2, y2);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestId = track.id;
+        }
+      }
+    }
+    return bestId;
+  }
+
+  private findNearestWaypoint(
+    wx: number, wy: number,
+    path: { x: number; y: number }[],
+  ): number | null {
+    for (let i = 0; i < path.length; i++) {
+      const px = path[i].x * GRID_SIZE;
+      const py = path[i].y * GRID_SIZE;
+      const dist = Math.sqrt((wx - px) ** 2 + (wy - py) ** 2);
+      if (dist <= WAYPOINT_HIT_RADIUS) return i;
+    }
+    return null;
+  }
+
+  private renderEditHandles() {
+    this.editHandlesGraphics.clear();
+    if (this.editSelectedTrackId === null) return;
+
+    const tracks = useMapStore.getState().tracks;
+    const track = tracks.find(t => t.id === this.editSelectedTrackId);
+    if (!track) return;
+
+    // During a drag, show the preview path; otherwise show the committed path
+    const path = this.editDragPath ?? track.path;
+
+    // Draw the preview path line in cyan
+    if (path.length >= 2) {
+      this.editHandlesGraphics.moveTo(path[0].x * GRID_SIZE, path[0].y * GRID_SIZE);
+      for (let i = 1; i < path.length; i++) {
+        this.editHandlesGraphics.lineTo(path[i].x * GRID_SIZE, path[i].y * GRID_SIZE);
+      }
+      this.editHandlesGraphics.stroke({ color: '#00ffff', width: 2, alpha: 0.6 });
+    }
+
+    // Draw a handle circle at each waypoint
+    for (let i = 0; i < path.length; i++) {
+      const px = path[i].x * GRID_SIZE;
+      const py = path[i].y * GRID_SIZE;
+      const isActive = i === this.editDragWaypointIdx;
+      // Active (dragging) handle: gold; resting handles: cyan
+      const color = isActive ? '#ffd700' : '#00ffff';
+      this.editHandlesGraphics.circle(px, py, 5).fill({ color, alpha: 1 });
+    }
+  }
+
+  // ─── Quadtree ──────────────────────────────────────────────────────────────
+
   private rebuildQuadtree(): void {
     this.stationQuadtree.clear();
     for (const station of useMapStore.getState().stations) {
@@ -288,6 +461,8 @@ export class InteractionManager {
     this.canvas.removeEventListener('pointermove', this.handlePointerMove);
     this.canvas.removeEventListener('pointerup', this.handlePointerUp);
     this.unsubscribeMapStore();
+    this.unsubscribeUIStore();
     this.previewGraphics.destroy();
+    this.editHandlesGraphics.destroy();
   }
 }
