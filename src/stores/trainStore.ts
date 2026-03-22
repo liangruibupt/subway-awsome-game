@@ -12,6 +12,7 @@ const DEFAULT_STYLE: TrainStyle = { bodyColor: '#0984e3', pattern: 'solid', acce
 interface TrainState {
   trains: Train[];
   createTrain: (head: TrainHead) => void;
+  setHead: (trainId: string, head: TrainHead) => void;
   deleteTrain: (id: string) => void;
   addCarriage: (trainId: string, carriage: Omit<Carriage, 'style'>) => void;
   removeCarriage: (trainId: string, index: number) => void;
@@ -27,6 +28,9 @@ export const useTrainStore = create<TrainState>((set, get) => ({
   trains: [],
   createTrain: (head) => set(state => ({
     trains: [...state.trains, { id: generateId(), lineId: '', head, carriages: [], style: { ...DEFAULT_STYLE } }],
+  })),
+  setHead: (trainId, head) => set(state => ({
+    trains: state.trains.map(t => t.id === trainId ? { ...t, head } : t),
   })),
   deleteTrain: (id) => set(state => ({ trains: state.trains.filter(t => t.id !== id) })),
   addCarriage: (trainId, carriageBase) => set(state => ({

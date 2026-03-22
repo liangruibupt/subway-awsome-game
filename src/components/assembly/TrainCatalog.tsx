@@ -90,7 +90,7 @@ export function TrainCatalog() {
 
   const trains         = useTrainStore((s) => s.trains);
   const createTrain    = useTrainStore((s) => s.createTrain);
-  const resetTrains    = useTrainStore((s) => s.reset);
+  const setHead        = useTrainStore((s) => s.setHead);
   const addCarriage    = useTrainStore((s) => s.addCarriage);
   const assemblyPhase  = useUIStore((s) => s.assemblyPhase);
   const setPhase       = useUIStore((s) => s.setAssemblyPhase);
@@ -104,8 +104,12 @@ export function TrainCatalog() {
 
   function handleHeadClick(item: CatalogItem) {
     const head: TrainHead = { type: item.type, era: item.era, city: item.city };
-    resetTrains();
-    createTrain(head);
+    if (activeTrain) {
+      // Swap head on existing train (keeps carriages intact)
+      setHead(activeTrain.id, head);
+    } else {
+      createTrain(head);
+    }
   }
 
   function handleCarriageClick(item: CatalogItem) {
