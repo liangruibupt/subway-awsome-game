@@ -851,7 +851,7 @@ export class AssemblyRenderer {
   private onTick = () => {
     if (useUIStore.getState().assemblyPhase !== 'head-selection') return;
     if (this.autoRotate && !this.isDragging) {
-      this.currentAngle = (this.currentAngle + 0.2) % 360;
+      this.currentAngle = (this.currentAngle + 0.8) % 360;
       this.applyRotation();
     }
   };
