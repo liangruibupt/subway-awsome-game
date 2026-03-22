@@ -12,6 +12,7 @@ interface UIState {
   mouseGridY: number;
   assemblyPhase: 'head-selection' | 'carriage-building';
   selectedCarriageIndex: number | null;
+  activeTrainIndex: number;
   setMode: (mode: GameMode) => void;
   setTool: (tool: TrackTool) => void;
   selectStation: (id: string | null) => void;
@@ -21,6 +22,7 @@ interface UIState {
   setMouseGrid: (x: number, y: number) => void;
   setAssemblyPhase: (phase: 'head-selection' | 'carriage-building') => void;
   selectCarriage: (index: number | null) => void;
+  setActiveTrainIndex: (index: number) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -34,6 +36,7 @@ export const useUIStore = create<UIState>((set) => ({
   mouseGridY: 0,
   assemblyPhase: 'head-selection',
   selectedCarriageIndex: null,
+  activeTrainIndex: 0,
   setMode: (mode) => set({ mode }),
   setTool: (tool) => set({ tool }),
   selectStation: (id) => set({ selectedStationId: id }),
@@ -43,4 +46,5 @@ export const useUIStore = create<UIState>((set) => ({
   setMouseGrid: (x, y) => set({ mouseGridX: x, mouseGridY: y }),
   setAssemblyPhase: (phase) => set({ assemblyPhase: phase, selectedCarriageIndex: null }),
   selectCarriage: (index) => set({ selectedCarriageIndex: index }),
+  setActiveTrainIndex: (index) => set({ activeTrainIndex: index }),
 }));

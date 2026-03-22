@@ -5,10 +5,10 @@ const MAX_CARRIAGES = 7;
 const MAX_CARS      = 1 + MAX_CARRIAGES; // 8
 
 export function CarriageCounter() {
-  const trains         = useTrainStore((s) => s.trains);
-  const selectedTrainId = useUIStore((s) => s.selectedTrainId);
+  const trains          = useTrainStore((s) => s.trains);
+  const activeTrainIndex = useUIStore((s) => s.activeTrainIndex);
 
-  const activeTrain    = trains.find((t) => t.id === selectedTrainId) ?? trains[0] ?? null;
+  const activeTrain    = trains[activeTrainIndex] ?? null;
   const carriageCount  = activeTrain?.carriages.length ?? 0;
   const totalCars      = 1 + carriageCount;
   const atMax          = carriageCount >= MAX_CARRIAGES;

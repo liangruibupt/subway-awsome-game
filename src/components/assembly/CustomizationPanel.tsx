@@ -52,11 +52,12 @@ export function CustomizationPanel() {
   const trains              = useTrainStore((s) => s.trains);
   const updateCarriageStyle = useTrainStore((s) => s.updateCarriageStyle);
 
-  const assemblyPhase          = useUIStore((s) => s.assemblyPhase);
-  const setAssemblyPhase       = useUIStore((s) => s.setAssemblyPhase);
-  const selectedCarriageIndex  = useUIStore((s) => s.selectedCarriageIndex);
+  const assemblyPhase         = useUIStore((s) => s.assemblyPhase);
+  const setAssemblyPhase      = useUIStore((s) => s.setAssemblyPhase);
+  const selectedCarriageIndex = useUIStore((s) => s.selectedCarriageIndex);
+  const activeTrainIndex      = useUIStore((s) => s.activeTrainIndex);
 
-  const activeTrain      = trains[0] ?? null;
+  const activeTrain      = trains[activeTrainIndex] ?? null;
   const selectedCarriage =
     activeTrain !== null && selectedCarriageIndex !== null
       ? (activeTrain.carriages[selectedCarriageIndex] ?? null)

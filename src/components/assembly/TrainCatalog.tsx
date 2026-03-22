@@ -88,14 +88,15 @@ function CatalogCard({
 export function TrainCatalog() {
   const [selectedEra, setSelectedEra] = useState<Era>('modern');
 
-  const trains         = useTrainStore((s) => s.trains);
-  const createTrain    = useTrainStore((s) => s.createTrain);
-  const setHead        = useTrainStore((s) => s.setHead);
-  const addCarriage    = useTrainStore((s) => s.addCarriage);
-  const assemblyPhase  = useUIStore((s) => s.assemblyPhase);
-  const setPhase       = useUIStore((s) => s.setAssemblyPhase);
+  const trains            = useTrainStore((s) => s.trains);
+  const createTrain       = useTrainStore((s) => s.createTrain);
+  const setHead           = useTrainStore((s) => s.setHead);
+  const addCarriage       = useTrainStore((s) => s.addCarriage);
+  const assemblyPhase     = useUIStore((s) => s.assemblyPhase);
+  const setPhase          = useUIStore((s) => s.setAssemblyPhase);
+  const activeTrainIndex  = useUIStore((s) => s.activeTrainIndex);
 
-  const activeTrain     = trains[0] ?? null;
+  const activeTrain     = trains[activeTrainIndex] ?? null;
   const carriageCount   = activeTrain?.carriages.length ?? 0;
   const atMaxCarriages  = carriageCount >= 7;
 
@@ -125,7 +126,7 @@ export function TrainCatalog() {
   if (assemblyPhase === 'head-selection') {
     return (
       <div style={{
-        width: '100%', height: '100%', overflowY: 'auto',
+        width: '100%',
         padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 10,
       }}>
         {/* Title */}
@@ -188,7 +189,7 @@ export function TrainCatalog() {
 
   return (
     <div style={{
-      width: '100%', height: '100%', overflowY: 'auto',
+      width: '100%',
       padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       {/* Change Head button */}

@@ -1,5 +1,6 @@
 import { useUIStore } from '../../stores/uiStore';
 import type { TrackTool } from '../../types';
+import { TrainList } from '../assembly/TrainList';
 import { TrainCatalog } from '../assembly/TrainCatalog';
 
 const TRACK_TOOLS: { tool: TrackTool; icon: string; label: string }[] = [
@@ -34,7 +35,12 @@ export function LeftToolBar() {
           ))}
         </div>
       )}
-      {mode === 'assembly' && <TrainCatalog />}
+      {mode === 'assembly' && (
+        <>
+          <TrainList />
+          <TrainCatalog />
+        </>
+      )}
       {mode === 'simulation' && (
         <div style={{
           padding: '16px 6px',

@@ -183,7 +183,9 @@ export class AssemblyRenderer {
     this.trainContainer.scale.x = 1;
 
     const trains = useTrainStore.getState().trains;
-    if (!trains.length) {
+    const activeTrainIndex = useUIStore.getState().activeTrainIndex;
+    const train = trains[activeTrainIndex];
+    if (!train) {
       this.clearTrainContainer();
       const text = new Text({
         text: 'Pick a head from the left to start!',
@@ -198,11 +200,10 @@ export class AssemblyRenderer {
       return;
     }
 
-    const train = trains[0];
     const viewLabel = this.getViewLabel();
 
-    // Only redraw if the view or head changed
-    const viewKey = `${viewLabel}:${train.head.type}`;
+    // Only redraw if the view, head, or active train changed
+    const viewKey = `${activeTrainIndex}:${viewLabel}:${train.head.type}`;
     if (viewKey === this.lastRenderedView) {
       this.updateAngleLabel();
       return;
@@ -472,9 +473,9 @@ export class AssemblyRenderer {
     const H   = app.screen.height;
 
     const trains = useTrainStore.getState().trains;
-    if (!trains.length) return;
-
-    const train       = trains[0];
+    const activeTrainIndex = useUIStore.getState().activeTrainIndex;
+    const train = trains[activeTrainIndex];
+    if (!train) return;
     const selectedIdx = useUIStore.getState().selectedCarriageIndex;
 
     const numFilled = train.carriages.length;
@@ -920,7 +921,10 @@ export class AssemblyRenderer {
 
     const trains = useTrainStore.getState().trains;
     if (!trains.length) return;
-    const trainId = trains[0].id;
+    const activeTrainIndex = useUIStore.getState().activeTrainIndex;
+    const activeTrain = trains[activeTrainIndex];
+    if (!activeTrain) return;
+    const trainId = activeTrain.id;
 
     for (const region of this.carriageRegions) {
       if (px >= region.x && px <= region.x + region.w &&
