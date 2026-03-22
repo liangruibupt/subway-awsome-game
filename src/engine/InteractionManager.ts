@@ -4,13 +4,16 @@ import type { CameraController } from './CameraController';
 import { useUIStore } from '../stores/uiStore';
 import { useMapStore } from '../stores/mapStore';
 import { snapToGrid } from '../utils/grid';
+import { Quadtree } from './Quadtree';
 
 const GRID_SIZE = 30;
 
+/** Large enough to encompass the entire playable world in world-space pixels. */
+const WORLD_SIZE = 10_000;
+
 /**
  * Click radius (in world-space pixels) within which a station is considered
- * "hit" for the delete tool.  A simple distance check is used here; Task 9
- * will upgrade this to a quadtree for large maps.
+ * "hit" for the delete tool.
  */
 const DELETE_HIT_RADIUS = 20;
 
@@ -39,6 +42,12 @@ export class InteractionManager {
   private mouseWorldX = 0;
   private mouseWorldY = 0;
 
+  /** Spatial index of station world-pixel positions for O(log n) hit testing. */
+  private stationQuadtree: Quadtree;
+
+  /** Unsubscribe function for the mapStore subscription. */
+  private unsubscribeMapStore: () => void;
+
   constructor(
     pixiApp: PixiApp,
     camera: CameraController,
@@ -51,6 +60,15 @@ export class InteractionManager {
     // Preview line graphics — sits on top of everything in world space
     this.previewGraphics = new Graphics();
     pixiApp.worldContainer.addChild(this.previewGraphics);
+
+    // Build quadtree from current stations and subscribe to future changes
+    this.stationQuadtree = new Quadtree({ x: 0, y: 0, w: WORLD_SIZE, h: WORLD_SIZE });
+    this.rebuildQuadtree();
+    this.unsubscribeMapStore = useMapStore.subscribe((state, prev) => {
+      if (state.stations !== prev.stations) {
+        this.rebuildQuadtree();
+      }
+    });
 
     this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     this.canvas.addEventListener('pointermove', this.handlePointerMove);
@@ -117,26 +135,12 @@ export class InteractionManager {
     // Screen → world pixel coordinates
     const world = this.camera.screenToWorld(screenX, screenY);
 
-    const stations = useMapStore.getState().stations;
+    const hit = this.stationQuadtree.findNearest(world.x, world.y, DELETE_HIT_RADIUS);
 
-    let nearestId: string | null = null;
-    let nearestDist = DELETE_HIT_RADIUS; // only match within this radius
-
-    for (const station of stations) {
-      // station.x/y are grid indices; convert to world pixels for comparison
-      const stationPx = station.x * GRID_SIZE;
-      const stationPy = station.y * GRID_SIZE;
-      const dist = Math.hypot(stationPx - world.x, stationPy - world.y);
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestId = station.id;
-      }
-    }
-
-    if (nearestId !== null) {
-      useMapStore.getState().deleteStation(nearestId);
+    if (hit !== null) {
+      useMapStore.getState().deleteStation(hit.id);
       // Deselect if we just deleted the selected station
-      if (useUIStore.getState().selectedStationId === nearestId) {
+      if (useUIStore.getState().selectedStationId === hit.id) {
         useUIStore.getState().selectStation(null);
       }
     }
@@ -144,21 +148,10 @@ export class InteractionManager {
 
   private handleConnect(screenX: number, screenY: number) {
     const world = this.camera.screenToWorld(screenX, screenY);
-    const stations = useMapStore.getState().stations;
 
-    // Find the nearest station within hit radius
-    let nearestId: string | null = null;
-    let nearestDist = CONNECT_HIT_RADIUS;
-
-    for (const station of stations) {
-      const stationPx = station.x * GRID_SIZE;
-      const stationPy = station.y * GRID_SIZE;
-      const dist = Math.hypot(stationPx - world.x, stationPy - world.y);
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestId = station.id;
-      }
-    }
+    // Find the nearest station within hit radius via quadtree
+    const hit = this.stationQuadtree.findNearest(world.x, world.y, CONNECT_HIT_RADIUS);
+    const nearestId = hit ? hit.id : null;
 
     if (nearestId === null) {
       // Clicked empty space — cancel connection
@@ -204,6 +197,18 @@ export class InteractionManager {
     this.connectSourceId = null;
     useUIStore.getState().selectStation(null);
     this.previewGraphics.clear();
+  }
+
+  /** Rebuild the station quadtree from the current mapStore state. */
+  private rebuildQuadtree(): void {
+    this.stationQuadtree.clear();
+    for (const station of useMapStore.getState().stations) {
+      this.stationQuadtree.insert({
+        id: station.id,
+        x: station.x * GRID_SIZE,
+        y: station.y * GRID_SIZE,
+      });
+    }
   }
 
   /**
@@ -278,6 +283,7 @@ export class InteractionManager {
   destroy() {
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
     this.canvas.removeEventListener('pointermove', this.handlePointerMove);
+    this.unsubscribeMapStore();
     this.previewGraphics.destroy();
   }
 }
