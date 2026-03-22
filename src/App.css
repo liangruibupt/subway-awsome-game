@@ -34,7 +34,7 @@ body {
 /* ── Main area (3-column) ── */
 .main-area {
   display: grid;
-  grid-template-columns: 72px 1fr 180px;
+  grid-template-columns: auto 1fr 180px;
   overflow: hidden;
   min-height: 0;
 }
@@ -103,6 +103,7 @@ body {
 
 /* ── Left toolbar ── */
 .left-toolbar {
+  width: 72px;
   background: #0d1f3c;
   border-right: 1px solid #1a3a5c;
   display: flex;
@@ -110,6 +111,13 @@ body {
   align-items: center;
   padding: 8px 0;
   overflow: hidden;
+}
+
+.left-toolbar--wide {
+  width: 200px;
+  align-items: stretch;
+  padding: 0;
+  overflow-y: auto;
 }
 
 .tool-list {

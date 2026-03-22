@@ -1,5 +1,6 @@
 import { useUIStore } from '../../stores/uiStore';
 import type { TrackTool } from '../../types';
+import { TrainCatalog } from '../assembly/TrainCatalog';
 
 const TRACK_TOOLS: { tool: TrackTool; icon: string; label: string }[] = [
   { tool: 'station', icon: '⬡', label: 'Station' },
@@ -14,8 +15,10 @@ export function LeftToolBar() {
   const tool = useUIStore((s) => s.tool);
   const setTool = useUIStore((s) => s.setTool);
 
+  const isAssembly = mode === 'assembly';
+
   return (
-    <div className="left-toolbar">
+    <div className={`left-toolbar${isAssembly ? ' left-toolbar--wide' : ''}`}>
       {mode === 'track-design' && (
         <div className="tool-list">
           {TRACK_TOOLS.map(({ tool: t, icon, label }) => (
@@ -31,11 +34,7 @@ export function LeftToolBar() {
           ))}
         </div>
       )}
-      {mode === 'assembly' && (
-        <div className="toolbar-placeholder">
-          <span className="placeholder-text-vertical">CATALOG</span>
-        </div>
-      )}
+      {mode === 'assembly' && <TrainCatalog />}
       {mode === 'simulation' && (
         <div className="toolbar-placeholder">
           <span className="placeholder-text-vertical">DEPLOY</span>

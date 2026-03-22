@@ -1,6 +1,8 @@
 import { useUIStore } from '../../stores/uiStore';
 import { LineList } from '../track-design/LineList';
 import { StationProperties } from '../track-design/StationProperties';
+import { CustomizationPanel } from '../assembly/CustomizationPanel';
+import { CarriageCounter } from '../assembly/CarriageCounter';
 
 export function RightPanel() {
   const mode = useUIStore((s) => s.mode);
@@ -21,10 +23,12 @@ export function RightPanel() {
         </>
       )}
       {mode === 'assembly' && (
-        <div className="panel-section">
-          <div className="panel-section-title">CUSTOMIZE</div>
-          <div className="panel-empty-msg">Select a train</div>
-        </div>
+        <>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            <CustomizationPanel />
+          </div>
+          <CarriageCounter />
+        </>
       )}
       {mode === 'simulation' && (
         <div className="panel-section">
