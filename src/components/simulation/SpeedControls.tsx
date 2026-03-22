@@ -2,12 +2,13 @@ import { useSimulationStore } from '../../stores/simulationStore';
 
 function formatTime(minutes: number): string {
   // minutes=0 => 6:00 AM, minutes=720 => 6:00 PM, minutes=1080 => 12:00 AM
-  const totalMinsFromMidnight = (minutes + 360) % 1440;
+  const totalMinsFromMidnight = Math.floor((minutes + 360) % 1440);
   const h24 = Math.floor(totalMinsFromMidnight / 60);
-  const m = totalMinsFromMidnight % 60;
+  const m = Math.floor(totalMinsFromMidnight % 60);
+  const s = Math.floor((minutes * 60) % 60);
   const period = h24 < 12 ? 'AM' : 'PM';
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  return `${h12}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} ${period}`;
 }
 
 export function SpeedControls() {

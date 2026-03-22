@@ -115,18 +115,13 @@ export function GameCanvas() {
 
         simEngine = new SimulationEngine();
 
-        // Load map data into engine
+        // Load map data into engine (stations + lines are static)
         const mapState = useMapStore.getState();
-        const trainState = useTrainStore.getState();
-
-        // Load stations and lines into engine
         simEngine.setStations(mapState.stations.map(s => ({ id: s.id, x: s.x, y: s.y })));
-
         for (const line of mapState.lines) {
           simEngine.setLine({ id: line.id, name: line.name, color: line.color, stationIds: line.stationIds });
         }
 
-        // Add deployed trains
         const stationMap = new Map<string, { x: number; y: number; name: string }>();
         for (const s of mapState.stations) {
           stationMap.set(s.id, { x: s.x, y: s.y, name: s.name });
@@ -138,29 +133,34 @@ export function GameCanvas() {
         }
 
         const trainCarriageCounts = new Map<string, number>();
-        for (const train of trainState.trains) {
-          if (train.lineId) {
-            const capacity = trainState.getTrainCapacity(train.id);
-            simEngine.addTrain({ id: train.id, lineId: train.lineId, capacity });
-            trainCarriageCounts.set(train.id, train.carriages.length);
-          }
-        }
 
-        // Reset simulation store
         useSimulationStore.getState().reset();
 
         trainSpriteRenderer = new TrainSpriteRenderer(
           pixiApp, simEngine, stationMap, lineMap, trainCarriageCounts
         );
 
-        // Ticker: run simulation each frame
         const engineRef = simEngine;
         const spriteRef = trainSpriteRenderer;
+        let trainsLoaded = false;
 
         simTickerFn = (ticker: { deltaMS: number }) => {
           const simStore = useSimulationStore.getState();
+
+          // Lazy-load trains on first unpause (so user can deploy THEN press play)
+          if (!simStore.paused && !trainsLoaded) {
+            trainsLoaded = true;
+            const trainState = useTrainStore.getState();
+            for (const train of trainState.trains) {
+              if (train.lineId) {
+                const capacity = trainState.getTrainCapacity(train.id);
+                engineRef.addTrain({ id: train.id, lineId: train.lineId, capacity });
+                trainCarriageCounts.set(train.id, train.carriages.length);
+              }
+            }
+          }
+
           if (simStore.paused) {
-            // Still render current positions even when paused
             spriteRef.update(0);
             return;
           }
@@ -169,18 +169,11 @@ export function GameCanvas() {
           engineRef.tick(deltaSeconds);
           spriteRef.update(deltaSeconds);
 
-          // Update simulation store with stats
+          // Update time in store
+          useSimulationStore.setState({ time: engineRef.getTime() });
+
+          // Update passenger stats
           const allTrains = engineRef.getAllTrainStates();
-          let totalPax = 0;
-          for (const t of allTrains) {
-            totalPax += t.passengers;
-          }
-
-          // Update time in store (convert engine seconds to minutes)
-          const engineTime = engineRef.getTime();
-          useSimulationStore.setState({ time: engineTime });
-
-          // Accumulate passengers per line
           for (const t of allTrains) {
             if (t.status === 'loading') {
               useSimulationStore.getState().addPassengers(t.lineId, 1);

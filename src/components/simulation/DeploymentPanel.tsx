@@ -103,19 +103,19 @@ export function DeploymentPanel() {
 
               {/* Action */}
               {assignedTrain ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 9, color: '#00b894', fontFamily: 'Courier New, monospace' }}>
-                    Train deployed!
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                  <span style={{ fontSize: 8, color: '#00b894', fontFamily: 'Courier New, monospace' }}>
+                    Deployed
                   </span>
                   <button
                     onClick={() => handleRemove(assignedTrain.id)}
                     style={{
-                      padding: '3px 7px',
+                      padding: '2px 6px',
                       background: '#ff6b6b22',
                       border: '1px solid #ff6b6b',
                       borderRadius: 3,
                       color: '#ff6b6b',
-                      fontSize: 9,
+                      fontSize: 8,
                       fontFamily: 'Courier New, monospace',
                       fontWeight: 'bold',
                       cursor: 'pointer',
