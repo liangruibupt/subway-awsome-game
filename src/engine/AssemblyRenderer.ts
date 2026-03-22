@@ -164,14 +164,15 @@ export class AssemblyRenderer {
     }
   }
 
-  // ─── Phase 1: turntable + isometric head ───────────────────────────────────
+  // ─── Phase 1: turntable + multi-angle head ──────────────────────────────────
+
+  private lastRenderedView = '';
 
   private renderPhase1() {
     this.platformGraphics.visible = true;
     this.angleLabelText.visible   = true;
 
     this.drawPlatform();
-    this.clearTrainContainer();
 
     const app = this.pixiApp.app;
     const platformCX = app.screen.width  / 2;
@@ -179,10 +180,11 @@ export class AssemblyRenderer {
 
     this.trainContainer.x = platformCX;
     this.trainContainer.y = 0;
-    // keep existing scale.x (rotation applied by onTick / applyRotation)
+    this.trainContainer.scale.x = 1;
 
     const trains = useTrainStore.getState().trains;
     if (!trains.length) {
+      this.clearTrainContainer();
       const text = new Text({
         text: 'Pick a head from the left to start!',
         style: { fontFamily: 'monospace', fontSize: 14, fill: '#b2bec3' },
@@ -191,16 +193,231 @@ export class AssemblyRenderer {
       text.x = 0;
       text.y = platformCY - 55;
       this.trainContainer.addChild(text);
+      this.lastRenderedView = '';
       this.updateAngleLabel();
       return;
     }
 
     const train = trains[0];
-    // Center the head car on the platform (local x=0 is platform centre)
-    const headPx = -(ISO_CAR_W / 2);
-    const headPy = platformCY - 8;
-    this.drawIsoHeadCar(headPx, headPy, train.head, train.style);
+    const viewLabel = this.getViewLabel();
+
+    // Only redraw if the view or head changed
+    const viewKey = `${viewLabel}:${train.head.type}`;
+    if (viewKey === this.lastRenderedView) {
+      this.updateAngleLabel();
+      return;
+    }
+    this.lastRenderedView = viewKey;
+
+    this.clearTrainContainer();
+    const theme = getHeadTheme(train.head);
+    const baseY = platformCY - 8;
+
+    switch (viewLabel) {
+      case 'Front View':
+        this.drawHeadFront(0, baseY, train.head, theme);
+        break;
+      case 'Front 3/4':
+        this.drawIsoHeadCar(-ISO_CAR_W / 2, baseY, train.head, train.style);
+        break;
+      case 'Right Side':
+        this.drawHeadSide(0, baseY, train.head, theme, false);
+        break;
+      case 'Rear 3/4':
+        this.drawHeadRear(-ISO_CAR_W / 2, baseY, train.head, theme);
+        break;
+      case 'Left Side':
+        this.drawHeadSide(0, baseY, train.head, theme, true);
+        break;
+    }
+
     this.updateAngleLabel();
+  }
+
+  // ── Front view (symmetrical, facing player) ────────────────────────────────
+
+  private drawHeadFront(cx: number, baseY: number, head: TrainHead, theme: ReturnType<typeof getHeadTheme>) {
+    const W = 70, H = 55;
+    const x = cx - W / 2;
+    const topY = baseY - H;
+    const bodyN = hexToNumber(theme.body);
+    const accentN = hexToNumber(theme.accent);
+
+    const g = new Graphics();
+
+    // Body
+    g.roundRect(x, topY, W, H, 8).fill({ color: bodyN });
+    // Lighter top edge
+    g.roundRect(x, topY, W, 8, 8).fill({ color: hexToNumber(lighten(theme.body, 40)), alpha: 0.6 });
+
+    // Large windshield
+    g.roundRect(x + 10, topY + 10, W - 20, H * 0.45, 4).fill({ color: theme.windshield, alpha: 0.85 });
+    // Windshield reflection
+    g.roundRect(x + 14, topY + 13, 16, 10, 2).fill({ color: 0x5dade2, alpha: 0.15 });
+
+    // Route display
+    g.roundRect(cx - 12, topY + H * 0.5, 24, 10, 2).fill({ color: accentN, alpha: 0.9 });
+
+    // Headlights (symmetrical)
+    g.circle(x + 12, baseY - 12, 5).fill({ color: 0x333333 });
+    g.circle(x + 12, baseY - 12, 3.5).fill({ color: theme.lightColor });
+    g.circle(x + W - 12, baseY - 12, 5).fill({ color: 0x333333 });
+    g.circle(x + W - 12, baseY - 12, 3.5).fill({ color: theme.lightColor });
+
+    // Fog lights
+    g.circle(x + 20, baseY - 5, 2.5).fill({ color: theme.lightColor, alpha: 0.7 });
+    g.circle(x + W - 20, baseY - 5, 2.5).fill({ color: theme.lightColor, alpha: 0.7 });
+
+    // Accent stripe
+    g.rect(x + 4, baseY - H * 0.38, W - 8, 4).fill({ color: accentN, alpha: 0.85 });
+
+    // Coupling
+    g.roundRect(cx - 8, baseY - 3, 16, 6, 2).fill({ color: 0x555555 });
+
+    // Outline
+    g.roundRect(x, topY, W, H, 8).stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
+
+    this.trainContainer.addChild(g);
+    this.addHeadLabels(cx, baseY, head);
+  }
+
+  // ── Side view (flat profile) ───────────────────────────────────────────────
+
+  private drawHeadSide(cx: number, baseY: number, head: TrainHead, theme: ReturnType<typeof getHeadTheme>, mirrored: boolean) {
+    const W = 100, H = 50;
+    const x = cx - W / 2;
+    const topY = baseY - H;
+    const bodyN = hexToNumber(theme.body);
+    const accentN = hexToNumber(theme.accent);
+
+    const ct = new Container();
+    const g = new Graphics();
+
+    // Body with rounded nose on the left
+    g.roundRect(x, topY, W, H, 5).fill({ color: bodyN });
+
+    // Nose (rounded front edge)
+    g.roundRect(x - 8, topY + 4, 14, H - 8, 7).fill({ color: hexToNumber(lighten(theme.body, 20)) });
+
+    // Roof highlight
+    g.rect(x, topY, W, 6).fill({ color: hexToNumber(lighten(theme.body, 35)), alpha: 0.5 });
+
+    // Windshield (front)
+    g.roundRect(x - 4, topY + 8, 14, H - 16, 3).fill({ color: theme.windshield, alpha: 0.8 });
+
+    // Windows row
+    const winY = topY + 12;
+    const winH = H - 24;
+    for (let wx = x + 18; wx < x + W - 8; wx += 22) {
+      g.roundRect(wx, winY, 16, winH, 3).fill({ color: 0x1e272e, alpha: 0.8 });
+    }
+
+    // Door lines
+    g.moveTo(x + 40, topY + 4).lineTo(x + 40, baseY - 4).stroke({ color: 0xdfe6e9, width: 0.8, alpha: 0.2 });
+    g.moveTo(x + 70, topY + 4).lineTo(x + 70, baseY - 4).stroke({ color: 0xdfe6e9, width: 0.8, alpha: 0.2 });
+
+    // Accent stripe
+    g.rect(x - 4, topY + Math.round(H * 0.55), W + 8, 5).fill({ color: accentN, alpha: 0.85 });
+
+    // Headlight
+    g.circle(x - 4, baseY - 12, 4).fill({ color: theme.lightColor });
+
+    // Wheels
+    g.circle(x + 18, baseY + 2, 7).fill({ color: 0x333333 });
+    g.circle(x + 18, baseY + 2, 3).fill({ color: 0x555555 });
+    g.circle(x + W - 18, baseY + 2, 7).fill({ color: 0x333333 });
+    g.circle(x + W - 18, baseY + 2, 3).fill({ color: 0x555555 });
+
+    // Rail
+    g.rect(x - 15, baseY + 9, W + 30, 2).fill({ color: 0x4a4870 });
+
+    // Outline
+    g.roundRect(x - 8, topY + 4, W + 8, H - 4, 5).stroke({ color: 0xffffff, width: 0.5, alpha: 0.12 });
+
+    ct.addChild(g);
+
+    if (mirrored) {
+      ct.scale.x = -1;
+    }
+
+    this.trainContainer.addChild(ct);
+    this.addHeadLabels(cx, baseY + 14, head);
+  }
+
+  // ── Rear 3/4 view (isometric, showing back) ───────────────────────────────
+
+  private drawHeadRear(px: number, baseY: number, head: TrainHead, theme: ReturnType<typeof getHeadTheme>) {
+    const bodyHex   = theme.body;
+    const topColor  = hexToNumber(lighten(bodyHex, 40));
+    const sideColor = hexToNumber(darken(bodyHex, 15));
+    const endColor  = hexToNumber(darken(bodyHex, 40));
+    const accentN   = hexToNumber(theme.accent);
+    const depth = ISO_STD_DEPTH;
+    const dX    = Math.round(depth * 0.28);
+    const dY    = -Math.round(depth * 0.55);
+
+    const ct = this.buildIsoBox(px, baseY, ISO_CAR_W, ISO_CAR_H, depth, topColor, sideColor, endColor);
+
+    // Rear wall (end face - darker, with tail lights)
+    const rear = new Graphics();
+    // Tail lights (red)
+    rear.circle(px + dX - 3, baseY - ISO_CAR_H + dY + 10, 3).fill({ color: 0xe74c3c, alpha: 0.9 });
+    rear.circle(px + dX - 3, baseY + dY - 8, 3).fill({ color: 0xe74c3c, alpha: 0.9 });
+    ct.addChild(rear);
+
+    // Rear coupler
+    const coupler = new Graphics();
+    coupler.roundRect(px + dX - 6, baseY + dY - 2, 10, 8, 2).fill({ color: 0x555555 });
+    ct.addChild(coupler);
+
+    // Rear window (emergency door)
+    const rearWin = new Graphics();
+    rearWin.roundRect(px + 2, baseY - ISO_CAR_H + 8, 6, 16, 2).fill({ color: theme.windshield, alpha: 0.5 });
+    ct.addChild(rearWin);
+
+    // Side windows (visible on the main face)
+    const wins = new Graphics();
+    const winH = Math.round(ISO_CAR_H * 0.42);
+    const winY = baseY - ISO_CAR_H + 7;
+    wins.rect(px + 8,  winY, 13, winH).fill({ color: 0x1e272e, alpha: 0.78 });
+    wins.rect(px + 30, winY, 13, winH).fill({ color: 0x1e272e, alpha: 0.78 });
+    ct.addChild(wins);
+
+    // Accent stripe
+    const stripe = new Graphics();
+    stripe.rect(px + 2, baseY - Math.round(ISO_CAR_H * 0.45), ISO_CAR_W - 4, 5).fill({ color: accentN, alpha: 0.7 });
+    ct.addChild(stripe);
+
+    // Outline
+    const outline = new Graphics();
+    outline.poly([px, baseY, px + ISO_CAR_W, baseY, px + ISO_CAR_W, baseY - ISO_CAR_H, px, baseY - ISO_CAR_H])
+           .stroke({ color: 0xffffff, width: 0.5, alpha: 0.2 });
+    ct.addChild(outline);
+
+    this.trainContainer.addChild(ct);
+    this.addHeadLabels(px + ISO_CAR_W / 2, baseY, head);
+  }
+
+  // ── Shared label helper ────────────────────────────────────────────────────
+
+  private addHeadLabels(cx: number, baseY: number, head: TrainHead) {
+    const label = new Text({
+      text: head.city.charAt(0).toUpperCase() + head.city.slice(1),
+      style: { fontFamily: 'monospace', fontSize: 11, fill: '#dfe6e9', fontWeight: 'bold' },
+    });
+    label.anchor.set(0.5, 0);
+    label.x = cx;
+    label.y = baseY + 8;
+    this.trainContainer.addChild(label);
+
+    const eraLabel = new Text({
+      text: head.era.toUpperCase(),
+      style: { fontFamily: 'monospace', fontSize: 8, fill: '#b2bec3' },
+    });
+    eraLabel.anchor.set(0.5, 0);
+    eraLabel.x = cx;
+    eraLabel.y = baseY + 22;
+    this.trainContainer.addChild(eraLabel);
   }
 
   // ─── Platform drawing (Phase 1) ─────────────────────────────────────────────
@@ -640,9 +857,8 @@ export class AssemblyRenderer {
   };
 
   private applyRotation() {
-    const rad = (this.currentAngle * Math.PI) / 180;
-    this.trainContainer.scale.x = Math.cos(rad);
-    this.updateAngleLabel();
+    // Re-render the head from the new angle (renderPhase1 checks which view to show)
+    this.renderPhase1();
   }
 
   // ─── Input handlers ────────────────────────────────────────────────────────
