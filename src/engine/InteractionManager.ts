@@ -97,6 +97,7 @@ export class InteractionManager {
     this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     this.canvas.addEventListener('pointermove', this.handlePointerMove);
     this.canvas.addEventListener('pointerup', this.handlePointerUp);
+    this.canvas.addEventListener('dblclick', this.handleDblClick);
   }
 
   private handlePointerDown = (e: PointerEvent) => {
@@ -300,7 +301,29 @@ export class InteractionManager {
       }
     }
 
-    // 2. Check if clicking near any track segment → select that track
+    // 2. If a track is selected and the click is near a segment (not near a handle) → insert waypoint
+    if (this.editSelectedTrackId !== null) {
+      const track = useMapStore.getState().tracks.find(t => t.id === this.editSelectedTrackId);
+      if (track) {
+        const segIdx = this.findNearestSegment(wx, wy, track.path);
+        if (segIdx !== null) {
+          const snappedX = snapToGrid(wx, GRID_SIZE);
+          const snappedY = snapToGrid(wy, GRID_SIZE);
+          const gridX = Math.round(snappedX / GRID_SIZE);
+          const gridY = Math.round(snappedY / GRID_SIZE);
+          const newPath = [
+            ...track.path.slice(0, segIdx + 1),
+            { x: gridX, y: gridY },
+            ...track.path.slice(segIdx + 1),
+          ];
+          useMapStore.getState().updateTrackPath(this.editSelectedTrackId!, newPath);
+          this.renderEditHandles();
+          return;
+        }
+      }
+    }
+
+    // 3. Check if clicking near any track segment → select that track
     const trackId = this.findNearestTrack(wx, wy);
     if (trackId !== null) {
       this.editSelectedTrackId = trackId;
@@ -310,7 +333,7 @@ export class InteractionManager {
       return;
     }
 
-    // 3. Clicked empty space → deselect
+    // 4. Clicked empty space → deselect
     this.editSelectedTrackId = null;
     this.editDragWaypointIdx = null;
     this.editDragPath = null;
@@ -352,6 +375,26 @@ export class InteractionManager {
     return null;
   }
 
+  private findNearestSegment(
+    wx: number, wy: number,
+    path: { x: number; y: number }[],
+  ): number | null {
+    let bestIdx: number | null = null;
+    let bestDist = TRACK_HIT_DIST;
+    for (let i = 0; i + 1 < path.length; i++) {
+      const x1 = path[i].x * GRID_SIZE;
+      const y1 = path[i].y * GRID_SIZE;
+      const x2 = path[i + 1].x * GRID_SIZE;
+      const y2 = path[i + 1].y * GRID_SIZE;
+      const dist = pointToSegmentDist(wx, wy, x1, y1, x2, y2);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
   private renderEditHandles() {
     this.editHandlesGraphics.clear();
     if (this.editSelectedTrackId === null) return;
@@ -382,6 +425,26 @@ export class InteractionManager {
       this.editHandlesGraphics.circle(px, py, 5).fill({ color, alpha: 1 });
     }
   }
+
+  private handleDblClick = (e: MouseEvent) => {
+    const tool = useUIStore.getState().tool;
+    if (tool !== 'edit' || this.editSelectedTrackId === null) return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const world = this.camera.screenToWorld(screenX, screenY);
+
+    const track = useMapStore.getState().tracks.find(t => t.id === this.editSelectedTrackId);
+    if (!track || track.path.length <= 2) return;
+
+    const idx = this.findNearestWaypoint(world.x, world.y, track.path);
+    if (idx === null) return;
+    if (idx === 0 || idx === track.path.length - 1) return; // don't delete endpoints
+
+    const newPath = track.path.filter((_, i) => i !== idx);
+    useMapStore.getState().updateTrackPath(this.editSelectedTrackId!, newPath);
+  };
 
   // ─── Quadtree ──────────────────────────────────────────────────────────────
 
@@ -460,6 +523,7 @@ export class InteractionManager {
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
     this.canvas.removeEventListener('pointermove', this.handlePointerMove);
     this.canvas.removeEventListener('pointerup', this.handlePointerUp);
+    this.canvas.removeEventListener('dblclick', this.handleDblClick);
     this.unsubscribeMapStore();
     this.unsubscribeUIStore();
     this.previewGraphics.destroy();
