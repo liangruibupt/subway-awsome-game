@@ -310,7 +310,9 @@ export class SimulationEngine {
   private getPathLength(path: { x: number; y: number }[]): number {
     let len = 0;
     for (let i = 1; i < path.length; i++) {
-      len += Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].y - path[i - 1].y);
+      const dx = path[i].x - path[i - 1].x;
+      const dy = path[i].y - path[i - 1].y;
+      len += Math.sqrt(dx * dx + dy * dy);
     }
     return len;
   }
@@ -335,7 +337,9 @@ export class SimulationEngine {
 
     let traveled = 0;
     for (let i = 1; i < path.length; i++) {
-      const segLen = Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].y - path[i - 1].y);
+      const sdx = path[i].x - path[i - 1].x;
+      const sdy = path[i].y - path[i - 1].y;
+      const segLen = Math.sqrt(sdx * sdx + sdy * sdy);
       if (traveled + segLen >= targetDist) {
         const t = segLen > 0 ? (targetDist - traveled) / segLen : 0;
         return {

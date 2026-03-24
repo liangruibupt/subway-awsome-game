@@ -225,4 +225,23 @@ describe('Common-sense simulation invariants', () => {
     // 1 head=40 + 2 standard=120 + 1 widebody=80 = 240
     expect(useTrainStore.getState().getTrainCapacity(trainId)).toBe(240);
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 9. Train on diagonal track reaches midpoint at 50%
+  // ─────────────────────────────────────────────────────────────────────────
+  it('train at 50% on diagonal track is at midpoint, not offset', () => {
+    const engine = new SimulationEngine();
+    engine.setStations([
+      { id: 's1', x: 0, y: 0 },
+      { id: 's2', x: 10, y: 10 },
+    ]);
+    engine.setLine({ id: 'l1', name: 'D', color: '#ff0000', stationIds: ['s1', 's2'] });
+    engine.setTrackPath('s1', 's2', [{ x: 0, y: 0 }, { x: 10, y: 10 }]);
+    engine.addTrain({ id: 't1', lineId: 'l1', capacity: 40 });
+    // Distance = sqrt(200) ≈ 14.14, speed = 2, time to 50% ≈ 3.54s
+    for (let i = 0; i < 354; i++) engine.tick(0.01);
+    const state = engine.getTrainState('t1');
+    expect(Math.abs(state.worldX - 5)).toBeLessThan(1.5);
+    expect(Math.abs(state.worldY - 5)).toBeLessThan(1.5);
+  });
 });

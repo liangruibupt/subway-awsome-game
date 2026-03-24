@@ -58,4 +58,20 @@ describe('SimulationEngine', () => {
     const train = engine.getTrainState('t1');
     expect(train.passengers).toBeGreaterThan(0);
   });
+
+  it('interpolates position on diagonal path at 50%', () => {
+    const engine = new SimulationEngine();
+    engine.setStations([
+      { id: 's1', x: 0, y: 0 },
+      { id: 's2', x: 6, y: 8 },
+    ]);
+    engine.setLine({ id: 'l1', name: 'Diag', color: '#ff0000', stationIds: ['s1', 's2'] });
+    engine.setTrackPath('s1', 's2', [{ x: 0, y: 0 }, { x: 6, y: 8 }]);
+    engine.addTrain({ id: 't1', lineId: 'l1', capacity: 40 });
+    // distance is 10, speed is 2 units/s, so 2.5 seconds to reach 50%
+    engine.tick(2.5);
+    const state = engine.getTrainState('t1');
+    expect(state.worldX).toBeCloseTo(3, 0);
+    expect(state.worldY).toBeCloseTo(4, 0);
+  });
 });
