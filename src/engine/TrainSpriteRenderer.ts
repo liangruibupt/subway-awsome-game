@@ -52,6 +52,11 @@ export class TrainSpriteRenderer {
   private pulseTimers = new Map<string, number>();
   private passengerAnimTimers = new Map<string, number>();
 
+  private prevWaiting = new Map<string, number>();
+  private prevTrainPax = new Map<string, number>();
+  private boardingAnims: { sx: number; sy: number; tx: number; ty: number; t: number }[] = [];
+  private alightingAnims: { sx: number; sy: number; tx: number; ty: number; t: number }[] = [];
+
   constructor(
     pixiApp: PixiApp,
     engine: SimulationEngine,
@@ -104,6 +109,82 @@ export class TrainSpriteRenderer {
 
       this.renderTrain(state, px, py, colorStr, carriageCount, trail);
     }
+
+    // Advance and prune animation dots
+    for (const anim of this.boardingAnims) anim.t += deltaSeconds * 2;
+    for (const anim of this.alightingAnims) anim.t += deltaSeconds * 2;
+    this.boardingAnims = this.boardingAnims.filter(a => a.t < 1);
+    this.alightingAnims = this.alightingAnims.filter(a => a.t < 1);
+
+    // Detect boarding / alighting for trains at stations
+    for (const state of trainStates) {
+      if (state.status === 'stopped' || state.status === 'loading') {
+        const line = this.lineMap.get(state.lineId);
+        if (line && state.currentStationIndex < line.stationIds.length) {
+          const stationId = line.stationIds[state.currentStationIndex];
+          const stationData = this.stationMap.get(stationId);
+          if (stationData) {
+            const sx = stationData.x * GRID_SIZE;
+            const sy = stationData.y * GRID_SIZE;
+            const tx = state.worldX * GRID_SIZE;
+            const ty = state.worldY * GRID_SIZE;
+
+            // Boarding: waiting count decreased
+            const currentWaiting = this.engine.getWaitingPassengers(stationId);
+            if (this.prevWaiting.has(stationId)) {
+              const prev = this.prevWaiting.get(stationId)!;
+              if (prev > currentWaiting) {
+                const diff = Math.min(prev - currentWaiting, 5);
+                for (let i = 0; i < diff; i++) {
+                  this.boardingAnims.push({ sx, sy, tx, ty, t: 0 });
+                }
+              }
+            }
+
+            // Alighting: train passenger count decreased
+            const currentPax = state.passengers;
+            if (this.prevTrainPax.has(state.id)) {
+              const prev = this.prevTrainPax.get(state.id)!;
+              if (prev > currentPax) {
+                const diff = Math.min(prev - currentPax, 5);
+                for (let i = 0; i < diff; i++) {
+                  this.alightingAnims.push({ sx, sy, tx, ty, t: 0 });
+                }
+              }
+            }
+          }
+        }
+      }
+      this.prevTrainPax.set(state.id, state.passengers);
+    }
+
+    // Update prevWaiting for all stations
+    for (const [stationId] of this.stationMap) {
+      this.prevWaiting.set(stationId, this.engine.getWaitingPassengers(stationId));
+    }
+
+    // Render waiting passenger dots at stations
+    for (const [stationId, stationData] of this.stationMap) {
+      const waiting = this.engine.getWaitingPassengers(stationId);
+      if (waiting <= 0) continue;
+      const sx = stationData.x * GRID_SIZE;
+      const sy = stationData.y * GRID_SIZE;
+      this.renderWaitingDots(sx, sy, waiting);
+    }
+
+    // Render boarding and alighting animations
+    const animG = new Graphics();
+    for (const anim of this.boardingAnims) {
+      const x = anim.sx + (anim.tx - anim.sx) * anim.t;
+      const y = anim.sy + (anim.ty - anim.sy) * anim.t;
+      animG.circle(x, y, 3).fill({ color: 0xffd93d, alpha: 1 - anim.t });
+    }
+    for (const anim of this.alightingAnims) {
+      const x = anim.tx + (anim.sx - anim.tx) * anim.t; // train→station
+      const y = anim.ty + (anim.sy - anim.ty) * anim.t;
+      animG.circle(x, y, 3).fill({ color: 0xffd93d, alpha: anim.t });
+    }
+    this.container.addChild(animG);
 
     // Clean up stale trails/timers
     const activeIds = new Set(trainStates.map(s => s.id));
@@ -287,6 +368,34 @@ export class TrainSpriteRenderer {
     }
 
     this.container.addChild(trainContainer);
+  }
+
+  private renderWaitingDots(sx: number, sy: number, count: number): void {
+    const g = new Graphics();
+    const startY = sy + 16;
+    const visibleCount = Math.min(count, 10);
+    for (let i = 0; i < visibleCount; i++) {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = sx - 4 + col * 8;
+      const y = startY + row * 8;
+      g.circle(x, y, 3).fill({ color: 0xffd93d, alpha: 1 });
+    }
+    this.container.addChild(g);
+    if (count > 10) {
+      const label = new Text({
+        text: String(count),
+        style: {
+          fontFamily: 'Courier New, monospace',
+          fontSize: 8,
+          fill: '#ffffff',
+        },
+      });
+      label.anchor.set(0.5, 0);
+      label.x = sx;
+      label.y = startY + Math.ceil(visibleCount / 2) * 8;
+      this.container.addChild(label);
+    }
   }
 
   destroy(): void {
