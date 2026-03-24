@@ -11,11 +11,13 @@ describe('geometry utils', () => {
     const path = manhattanPath({ x: 0, y: 0 }, { x: 3, y: 2 });
     expect(path[0]).toEqual({ x: 0, y: 0 });
     expect(path[path.length - 1]).toEqual({ x: 3, y: 2 });
-    // Path should only move in cardinal directions (one axis changes at a time)
-    for (let i = 1; i < path.length; i++) {
-      const dx = Math.abs(path[i].x - path[i - 1].x);
-      const dy = Math.abs(path[i].y - path[i - 1].y);
-      expect(dx + dy).toBe(1);
-    }
+    // Simplified path: start → corner → end = 3 points
+    expect(path.length).toBe(3);
+    expect(path[1]).toEqual({ x: 3, y: 0 }); // corner point
+  });
+
+  it('generates straight path when same axis', () => {
+    const path = manhattanPath({ x: 0, y: 0 }, { x: 5, y: 0 });
+    expect(path.length).toBe(2); // just start and end
   });
 });

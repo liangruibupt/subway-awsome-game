@@ -4,6 +4,7 @@ import type { CameraController } from './CameraController';
 import { useUIStore } from '../stores/uiStore';
 import { useMapStore } from '../stores/mapStore';
 import { snapToGrid } from '../utils/grid';
+import { simplifyPath } from '../utils/geometry';
 import { Quadtree } from './Quadtree';
 
 const GRID_SIZE = 30;
@@ -188,7 +189,7 @@ export class InteractionManager {
         this.editDragPath !== null &&
         this.editSelectedTrackId !== null
       ) {
-        useMapStore.getState().updateTrackPath(this.editSelectedTrackId, this.editDragPath);
+        useMapStore.getState().updateTrackPath(this.editSelectedTrackId, simplifyPath(this.editDragPath));
         // editDragPath and editDragWaypointIdx are cleared by the mapStore subscriber
         this.editDragWaypointIdx = null;
         this.editDragPath = null;
@@ -442,7 +443,7 @@ export class InteractionManager {
     if (idx === null) return;
     if (idx === 0 || idx === track.path.length - 1) return; // don't delete endpoints
 
-    const newPath = track.path.filter((_, i) => i !== idx);
+    const newPath = simplifyPath(track.path.filter((_, i) => i !== idx));
     useMapStore.getState().updateTrackPath(this.editSelectedTrackId!, newPath);
   };
 
