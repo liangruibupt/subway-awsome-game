@@ -279,21 +279,33 @@ export class TrainSpriteRenderer {
     // ── Carriages placed along the actual track path ─────────────────────────
     if (hasPath) {
       const pixelPathLen = pathLength * GRID_SIZE;
-      // Distance in pixels from head center to first carriage center,
-      // then successive carriage-to-carriage spacing.
-      const firstOffset = HEAD_W / 2 + 4 + CARRIAGE_W / 2;  // 29 px
-      const interCarriage = CARRIAGE_W + 3;                   // 23 px
+      const firstOffset = HEAD_W / 2 + 4 + CARRIAGE_W / 2;
+      const interCarriage = CARRIAGE_W + 3;
 
       for (let i = 0; i < carriageCount; i++) {
         const offsetPx = firstOffset + i * interCarriage;
         const carriageProgress = state.progress - offsetPx / pixelPathLen;
-        const pos = getPositionOnPath(trackPath!, carriageProgress, pathLength);
-        const cpx = pos.x * GRID_SIZE;
-        const cpy = pos.y * GRID_SIZE;
-        const cDLen = Math.sqrt(pos.dx * pos.dx + pos.dy * pos.dy);
-        const cIsVert = cDLen > 0
-          ? Math.abs(pos.dy / cDLen) > Math.abs(pos.dx / cDLen)
-          : isVertical;
+
+        let cpx: number, cpy: number, cIsVert: boolean;
+
+        if (carriageProgress >= 0) {
+          // Carriage is on the current track segment — use path interpolation
+          const pos = getPositionOnPath(trackPath!, carriageProgress, pathLength);
+          cpx = pos.x * GRID_SIZE;
+          cpy = pos.y * GRID_SIZE;
+          const cDLen = Math.sqrt(pos.dx * pos.dx + pos.dy * pos.dy);
+          cIsVert = cDLen > 0
+            ? Math.abs(pos.dy / cDLen) > Math.abs(pos.dx / cDLen)
+            : isVertical;
+        } else {
+          // Carriage extends past the start of current segment — place behind head in a straight line
+          const behindX = -dirX;
+          const behindY = -dirY;
+          cpx = px + behindX * offsetPx;
+          cpy = py + behindY * offsetPx;
+          cIsVert = isVertical;
+        }
+
         const [cw, ch] = cIsVert ? [CARRIAGE_H, CARRIAGE_W] : [CARRIAGE_W, CARRIAGE_H];
         const carriageColor = styles?.carriageColors[i] ?? colorStr;
         g.roundRect(cpx - cw / 2, cpy - ch / 2, cw, ch, 2)
