@@ -40,7 +40,7 @@ describe('Common-sense simulation invariants', () => {
     // Tick 20 times at 0.1 s each (2 s total).
     // Path length = 8, speed = 2, so progress reaches 0.5 — well within the path.
     for (let i = 0; i < 20; i++) {
-      engine.tick(0.1);
+      engine.tick(0.1, 5, 3);
       const state = engine.getTrainState('t1');
       // Only check while the train is actively moving (not snapped to the start point at progress=0)
       if (state.status === 'running' && state.progress > 0) {
@@ -66,7 +66,7 @@ describe('Common-sense simulation invariants', () => {
     // Train reaches s3 at approximately t=15 s → comfortably within 30 ticks of 1 s each
     let reachedS3 = false;
     for (let i = 0; i < 30; i++) {
-      engine.tick(1);
+      engine.tick(1, 5, 3);
       const state = engine.getTrainState('t1');
       if (state.currentStationIndex === 2 && !reachedS3) {
         reachedS3 = true;
@@ -80,7 +80,7 @@ describe('Common-sense simulation invariants', () => {
     // Total return journey ≈ 25 s → within 30 more ticks.
     let reachedS1 = false;
     for (let i = 0; i < 30; i++) {
-      engine.tick(1);
+      engine.tick(1, 5, 3);
       const state = engine.getTrainState('t1');
       if (state.currentStationIndex === 0 && !reachedS1) {
         reachedS1 = true;
@@ -133,7 +133,7 @@ describe('Common-sense simulation invariants', () => {
 
     // 3 ticks × 1 s: progress = 3 × (2/20) = 0.3 — train is still in transit
     for (let i = 0; i < 3; i++) {
-      engine.tick(1);
+      engine.tick(1, 5, 3);
       const state = engine.getTrainState('t1');
       if (state.status === 'running') {
         expect(state.passengers).toBe(passengersBefore);
@@ -157,7 +157,7 @@ describe('Common-sense simulation invariants', () => {
     engine.addTrain({ id: 't1', lineId: 'l1', capacity: 100 });
 
     // speed=2, path length=10 → 50% reached after 5/2=2.5 s
-    engine.tick(2.5);
+    engine.tick(2.5, 5, 3);
     const state = engine.getTrainState('t1');
 
     // At 50% of the L-path the train should be at the corner (5, 0)
@@ -177,7 +177,7 @@ describe('Common-sense simulation invariants', () => {
     const times: number[] = [engine.getTime()];
 
     for (let i = 0; i < 10; i++) {
-      engine.tick(1);
+      engine.tick(1, 5, 3);
       times.push(engine.getTime());
     }
 
@@ -204,13 +204,13 @@ describe('Common-sense simulation invariants', () => {
 
     // Continue ticking to verify no underflow occurs over subsequent stops
     for (let i = 0; i < 5; i++) {
-      engine.tick(1);
+      engine.tick(1, 5, 3);
       expect(engine.getWaitingPassengers('s1')).toBeGreaterThanOrEqual(0);
     }
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 8. Train capacity = head(40) + 2×standard(60) + 1×widebody(80) = 240
+  // 8. Train capacity = head(20) + 2×standard(20) + 1×widebody(20) = 80
   // ─────────────────────────────────────────────────────────────────────────
   it('getTrainCapacity returns correct total from head and carriages', () => {
     useTrainStore.getState().reset();
@@ -222,8 +222,8 @@ describe('Common-sense simulation invariants', () => {
     useTrainStore.getState().addCarriage(trainId, { type: 'standard', city: 'generic' });
     useTrainStore.getState().addCarriage(trainId, { type: 'widebody', city: 'generic' });
 
-    // 1 head=40 + 2 standard=120 + 1 widebody=80 = 240
-    expect(useTrainStore.getState().getTrainCapacity(trainId)).toBe(240);
+    // 1 head=20 + 2 standard=40 + 1 widebody=20 = 80
+    expect(useTrainStore.getState().getTrainCapacity(trainId)).toBe(80);
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -239,7 +239,7 @@ describe('Common-sense simulation invariants', () => {
     engine.setTrackPath('s1', 's2', [{ x: 0, y: 0 }, { x: 10, y: 10 }]);
     engine.addTrain({ id: 't1', lineId: 'l1', capacity: 40 });
     // Distance = sqrt(200) ≈ 14.14, speed = 2, time to 50% ≈ 3.54s
-    for (let i = 0; i < 354; i++) engine.tick(0.01);
+    for (let i = 0; i < 354; i++) engine.tick(0.01, 5, 3);
     const state = engine.getTrainState('t1');
     expect(Math.abs(state.worldX - 5)).toBeLessThan(1.5);
     expect(Math.abs(state.worldY - 5)).toBeLessThan(1.5);

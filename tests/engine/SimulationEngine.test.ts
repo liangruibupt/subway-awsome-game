@@ -54,7 +54,7 @@ describe('SimulationEngine', () => {
     engine.addTrain({ id: 't1', lineId: 'l1', capacity: 180 });
 
     // Tick enough for train to reach s2 and stop
-    for (let i = 0; i < 100; i++) engine.tick(1);
+    for (let i = 0; i < 100; i++) engine.tick(1, 5, 3);
     const train = engine.getTrainState('t1');
     expect(train.passengers).toBeGreaterThan(0);
   });

@@ -124,7 +124,7 @@ export function GameCanvas() {
 
         // Load map data into engine (stations + lines are static)
         const mapState = useMapStore.getState();
-        simEngine.setStations(mapState.stations.map(s => ({ id: s.id, x: s.x, y: s.y })));
+        simEngine.setStations(mapState.stations.map(s => ({ id: s.id, x: s.x, y: s.y, type: s.type })));
         for (const line of mapState.lines) {
           simEngine.setLine({ id: line.id, name: line.name, color: line.color, stationIds: line.stationIds });
         }
@@ -190,7 +190,8 @@ export function GameCanvas() {
 
           engineRef.setDwellTime(simStore.dwellTime);
           const deltaSeconds = (ticker.deltaMS / 1000) * simStore.speed;
-          engineRef.tick(deltaSeconds);
+          const { boardingPerStation, alightingPerStation } = useSimulationStore.getState();
+          engineRef.tick(deltaSeconds, boardingPerStation, alightingPerStation);
           spriteRef.update(deltaSeconds);
 
           // Update time in store

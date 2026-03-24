@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import type { Train, TrainHead, Carriage, TrainStyle } from '../types';
 import { generateId } from '../utils/id';
 
-const HEAD_CAPACITY = 40;
-const STANDARD_CAPACITY = 60;
-const WIDEBODY_CAPACITY = 80;
+const HEAD_CAPACITY = 20;
+const STANDARD_CAPACITY = 20;
+const WIDEBODY_CAPACITY = 20;
 const MAX_CARRIAGES = 7;
 
 const DEFAULT_STYLE: TrainStyle = { bodyColor: '#0984e3', pattern: 'solid', accentColor: '#ffd93d' };

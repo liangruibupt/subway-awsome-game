@@ -28,6 +28,7 @@ interface StationData {
   id: string;
   x: number;
   y: number;
+  type: string;
 }
 
 interface TrainInternal {
@@ -67,9 +68,9 @@ export class SimulationEngine {
     this.lines.set(line.id, { ...line, stationIds: [...line.stationIds] });
   }
 
-  setStations(stations: { id: string; x: number; y: number }[]): void {
+  setStations(stations: { id: string; x: number; y: number; type?: string }[]): void {
     for (const s of stations) {
-      this.stations.set(s.id, { ...s });
+      this.stations.set(s.id, { ...s, type: s.type ?? 'normal' });
       // Only initialise passenger data if not already present (e.g. from preloadPassengers)
       if (!this.passengerData.has(s.id)) {
         this.passengerData.set(s.id, {
@@ -109,7 +110,7 @@ export class SimulationEngine {
     };
 
     // Board any passengers waiting at the spawn station immediately (no dwell)
-    this.doBoard(train, line.stationIds[0]);
+    this.doBoard(train, line.stationIds[0], 5);
 
     this.trains.set(config.id, train);
   }
@@ -131,7 +132,7 @@ export class SimulationEngine {
     }
   }
 
-  tick(deltaSeconds: number): void {
+  tick(deltaSeconds: number, boardingPerStation = 5, alightingPerStation = 3): void {
     const multiplier = this.getRushMultiplier();
 
     // ── Passenger generation ──
@@ -146,7 +147,7 @@ export class SimulationEngine {
 
     // ── Train movement ──
     for (const train of this.trains.values()) {
-      this.updateTrain(train, deltaSeconds);
+      this.updateTrain(train, deltaSeconds, boardingPerStation, alightingPerStation);
     }
 
     // Advance clock after processing (so getRushMultiplier checks the time
@@ -226,25 +227,27 @@ export class SimulationEngine {
     return 1;
   }
 
-  private doBoard(train: TrainInternal, stationId: string): void {
+  private doBoard(train: TrainInternal, stationId: string, boardingPerStation: number): void {
     const data = this.passengerData.get(stationId);
     if (!data || data.waiting <= 0) return;
     const seats = train.capacity - train.passengers;
     if (seats <= 0) return;
-    const boarding = Math.min(data.waiting, seats);
+    const station = this.stations.get(stationId);
+    const multiplier = station?.type === 'interchange' ? 2 : 1;
+    const boarding = Math.min(data.waiting, boardingPerStation * multiplier, seats);
     train.passengers += boarding;
     data.waiting = Math.max(0, data.waiting - boarding);
   }
 
-  private doAlight(train: TrainInternal): void {
+  private doAlight(train: TrainInternal, stationId: string, alightingPerStation: number): void {
     if (train.passengers <= 0) return;
-    // Random 10–30 % of on-board passengers alight
-    const rate = 0.1 + Math.random() * 0.2;
-    const alighting = Math.floor(train.passengers * rate);
+    const station = this.stations.get(stationId);
+    const multiplier = station?.type === 'interchange' ? 2 : 1;
+    const alighting = Math.min(train.passengers, alightingPerStation * multiplier);
     train.passengers = Math.max(0, train.passengers - alighting);
   }
 
-  private updateTrain(train: TrainInternal, deltaSeconds: number): void {
+  private updateTrain(train: TrainInternal, deltaSeconds: number, boardingPerStation: number, alightingPerStation: number): void {
     const line = this.lines.get(train.lineId);
     if (!line) return;
 
@@ -253,8 +256,8 @@ export class SimulationEngine {
       if (train.dwellTimer <= 0) {
         train.dwellTimer = 0;
         const stationId = line.stationIds[train.currentStationIndex];
-        this.doAlight(train);
-        this.doBoard(train, stationId);
+        this.doAlight(train, stationId, alightingPerStation);
+        this.doBoard(train, stationId, boardingPerStation);
         train.status = 'running';
       }
       return;

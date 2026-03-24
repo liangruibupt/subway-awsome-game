@@ -29,7 +29,7 @@ describe('trainStore', () => {
     const trainId = useTrainStore.getState().trains[0].id;
     useTrainStore.getState().addCarriage(trainId, { type: 'standard', city: 'tokyo' });
     useTrainStore.getState().addCarriage(trainId, { type: 'widebody', city: 'tokyo' });
-    expect(useTrainStore.getState().getTrainCapacity(trainId)).toBe(180);
+    expect(useTrainStore.getState().getTrainCapacity(trainId)).toBe(60);
   });
 
   it('updates train style', () => {

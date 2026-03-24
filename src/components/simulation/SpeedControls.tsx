@@ -16,9 +16,13 @@ export function SpeedControls() {
   const paused = useSimulationStore((s) => s.paused);
   const time = useSimulationStore((s) => s.time);
   const dwellTime = useSimulationStore((s) => s.dwellTime);
+  const boardingPerStation = useSimulationStore((s) => s.boardingPerStation);
+  const alightingPerStation = useSimulationStore((s) => s.alightingPerStation);
   const setSpeed = useSimulationStore((s) => s.setSpeed);
   const togglePause = useSimulationStore((s) => s.togglePause);
   const setDwellTime = useSimulationStore((s) => s.setDwellTime);
+  const setBoardingPerStation = useSimulationStore((s) => s.setBoardingPerStation);
+  const setAlightingPerStation = useSimulationStore((s) => s.setAlightingPerStation);
 
   return (
     <div style={{
@@ -109,6 +113,74 @@ export function SpeedControls() {
           {dwellTime} seconds
         </span>
       </div>
+
+      {/* Boarding slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{
+          fontFamily: 'Courier New, monospace',
+          fontSize: 10,
+          color: '#b2bec3',
+          whiteSpace: 'nowrap',
+        }}>
+          Boarding
+        </span>
+        <input
+          type="range"
+          min={1}
+          max={20}
+          step={1}
+          value={boardingPerStation}
+          onChange={(e) => setBoardingPerStation(Number(e.target.value))}
+          style={{ width: 80 }}
+        />
+        <span style={{
+          fontFamily: 'Courier New, monospace',
+          fontSize: 10,
+          color: '#81ecec',
+          minWidth: 20,
+        }}>
+          {boardingPerStation}
+        </span>
+      </div>
+
+      {/* Alighting slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{
+          fontFamily: 'Courier New, monospace',
+          fontSize: 10,
+          color: '#b2bec3',
+          whiteSpace: 'nowrap',
+        }}>
+          Alighting
+        </span>
+        <input
+          type="range"
+          min={1}
+          max={20}
+          step={1}
+          value={alightingPerStation}
+          onChange={(e) => setAlightingPerStation(Number(e.target.value))}
+          style={{ width: 80 }}
+        />
+        <span style={{
+          fontFamily: 'Courier New, monospace',
+          fontSize: 10,
+          color: '#81ecec',
+          minWidth: 20,
+        }}>
+          {alightingPerStation}
+        </span>
+      </div>
+
+      {/* Capacity label */}
+      <span style={{
+        fontFamily: 'Courier New, monospace',
+        fontSize: 10,
+        color: '#b2bec3',
+        whiteSpace: 'nowrap',
+      }}>
+        Max 20 per car
+      </span>
     </div>
   );
 }

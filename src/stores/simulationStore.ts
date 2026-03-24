@@ -5,6 +5,8 @@ import type { TrainRunState } from '../engine/SimulationEngine';
 interface SimStore extends SimulationState {
   trainRunStates: Record<string, TrainRunState>;
   dwellTime: number;
+  boardingPerStation: number;
+  alightingPerStation: number;
   setSpeed: (speed: 1 | 2 | 4) => void;
   togglePause: () => void;
   tick: (deltaMinutes: number) => void;
@@ -12,6 +14,8 @@ interface SimStore extends SimulationState {
   recordArrival: (lineId: string, onTime: boolean) => void;
   setTrainRunStates: (states: TrainRunState[]) => void;
   setDwellTime: (seconds: number) => void;
+  setBoardingPerStation: (n: number) => void;
+  setAlightingPerStation: (n: number) => void;
   reset: () => void;
 }
 
@@ -24,6 +28,8 @@ export const useSimulationStore = create<SimStore>((set) => ({
   ...initialState,
   trainRunStates: {},
   dwellTime: 10,
+  boardingPerStation: 5,
+  alightingPerStation: 3,
   setSpeed: (speed) => set({ speed }),
   togglePause: () => set(state => ({ paused: !state.paused })),
   tick: (deltaMinutes) => set(state => {
@@ -50,5 +56,7 @@ export const useSimulationStore = create<SimStore>((set) => ({
     trainRunStates: Object.fromEntries(states.map(s => [s.id, s])),
   }),
   setDwellTime: (dwellTime) => set({ dwellTime }),
+  setBoardingPerStation: (boardingPerStation) => set({ boardingPerStation }),
+  setAlightingPerStation: (alightingPerStation) => set({ alightingPerStation }),
   reset: () => set({ ...initialState, trainRunStates: {} }),
 }));
