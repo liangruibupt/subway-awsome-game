@@ -94,7 +94,13 @@ setAlightingPerStation: (n: number) => void;
 
 ### SimulationEngine Boarding Logic
 
-Replace current boarding/alighting:
+Replace current boarding/alighting. Engine's `tick` method receives boarding/alighting parameters:
+
+```typescript
+tick(deltaSeconds: number, boardingPerStation: number, alightingPerStation: number): void;
+```
+
+`getWaitingPassengers(stationId)` is already public — no change needed.
 
 **Current:**
 - Board: `min(waiting, capacity - passengers)`
@@ -121,19 +127,20 @@ setStations(stations: { id: string; x: number; y: number; type?: string }[]): vo
 
 Draw waiting passengers as yellow dots (#ffd93d) around each station:
 - Each dot: radius 3px, slight random offset from station center (spread in a cluster)
-- Dot positions: arranged in a semicircle or grid pattern below/beside the station
+- Dot positions: arranged in a grid pattern (2 columns) below the station
 - If waiting count <= 10: show exact number of dots
 - If waiting count > 10: show 10 dots + a white text label with the count (e.g., "23")
 
 **Boarding animation (when train is stopped/loading):**
-- Dots move from station position toward the train position (lerp over ~0.5 seconds)
+- Dots move from station position toward the train position (lerp over ~0.5 seconds at 1x speed)
+- Animation duration scales with speed multiplier (0.25s at 2x, 0.125s at 4x)
 - Each boarding dot fades out as it reaches the train
 - Number of animating dots = actual boarding count for this stop
 
 **Alighting animation:**
 - Dots appear at the train and move outward to the station position
 - Fade in as they arrive at the station
-- These dots then join the waiting cluster (or disappear if they "leave")
+- Alighted passengers disappear after reaching the station (they have arrived at their destination)
 
 **Dwell time expiry:**
 - When train departs, any remaining waiting dots stay at the station
