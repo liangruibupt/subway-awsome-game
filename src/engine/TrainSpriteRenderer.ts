@@ -235,7 +235,27 @@ export class TrainSpriteRenderer {
       }
     }
 
+    // Direction for carriage placement: use TRAIL (actual movement history)
+    // not path segment direction. This matters when stopped at a station —
+    // the path points forward but carriages should trail behind the arrival direction.
+    let trailDirX = dirX;
+    let trailDirY = dirY;
+    if (trail.length >= 2) {
+      // Find the last significant movement in the trail
+      for (let i = trail.length - 1; i >= 1; i--) {
+        const dx = trail[i].x - trail[i - 1].x;
+        const dy = trail[i].y - trail[i - 1].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.5) {
+          trailDirX = dx / dist;
+          trailDirY = dy / dist;
+          break;
+        }
+      }
+    }
+
     const isVertical = Math.abs(dirY) > Math.abs(dirX);
+    const trailIsVertical = Math.abs(trailDirY) > Math.abs(trailDirX);
 
     // ── Train style colors ───────────────────────────────────────────────────
     const styles = this.trainStyles.get(state.id);
@@ -298,12 +318,13 @@ export class TrainSpriteRenderer {
             ? Math.abs(pos.dy / cDLen) > Math.abs(pos.dx / cDLen)
             : isVertical;
         } else {
-          // Carriage extends past the start of current segment — place behind head in a straight line
-          const behindX = -dirX;
-          const behindY = -dirY;
+          // Carriage extends past the start of current segment — place behind head
+          // using the TRAIL direction (arrival direction), not the forward path direction
+          const behindX = -trailDirX;
+          const behindY = -trailDirY;
           cpx = px + behindX * offsetPx;
           cpy = py + behindY * offsetPx;
-          cIsVert = isVertical;
+          cIsVert = trailIsVertical;
         }
 
         const [cw, ch] = cIsVert ? [CARRIAGE_H, CARRIAGE_W] : [CARRIAGE_W, CARRIAGE_H];
@@ -313,8 +334,8 @@ export class TrainSpriteRenderer {
       }
     } else {
       // Fallback: straight line behind head using trail direction
-      const behindX = -dirX;
-      const behindY = -dirY;
+      const behindX = -trailDirX;
+      const behindY = -trailDirY;
       for (let i = 0; i < carriageCount; i++) {
         const offset = hw + 4 + i * (CARRIAGE_W + 3) + CARRIAGE_W / 2;
         const cx = px + behindX * offset;
