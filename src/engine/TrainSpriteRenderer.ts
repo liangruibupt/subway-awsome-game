@@ -9,7 +9,7 @@ const HEAD_W = 30;
 const HEAD_H = 10;
 const CARRIAGE_W = 20;
 const CARRIAGE_H = 10;
-const TRAIL_LENGTH = 8;
+const TRAIL_LENGTH = 20;
 
 interface PathPosition {
   x: number;
@@ -296,52 +296,59 @@ export class TrainSpriteRenderer {
     const hh = headRH / 2;
     g.roundRect(px - hw, py - hh, headRW, headRH, 3).fill({ color: headColor, alpha: 1 });
 
-    // ── Carriages placed along the actual track path ─────────────────────────
-    if (hasPath) {
-      const pixelPathLen = pathLength * GRID_SIZE;
+    // ── Carriages: trail-based positioning ──────────────────────────────────
+    // Each carriage is placed at an earlier position in the movement trail.
+    // This is simple, reliable, and works at corners, stops, and interchange
+    // stations without needing per-segment path lookups.
+    {
       const firstOffset = HEAD_W / 2 + 4 + CARRIAGE_W / 2;
       const interCarriage = CARRIAGE_W + 3;
 
       for (let i = 0; i < carriageCount; i++) {
-        const offsetPx = firstOffset + i * interCarriage;
-        const carriageProgress = state.progress - offsetPx / pixelPathLen;
+        const targetDist = firstOffset + i * interCarriage;
 
-        let cpx: number, cpy: number, cIsVert: boolean;
+        let cpx = px;
+        let cpy = py;
+        let cIsVert = trailIsVertical;
 
-        if (carriageProgress >= 0) {
-          // Carriage is on the current track segment — use path interpolation
-          const pos = getPositionOnPath(trackPath!, carriageProgress, pathLength);
-          cpx = pos.x * GRID_SIZE;
-          cpy = pos.y * GRID_SIZE;
-          const cDLen = Math.sqrt(pos.dx * pos.dx + pos.dy * pos.dy);
-          cIsVert = cDLen > 0
-            ? Math.abs(pos.dy / cDLen) > Math.abs(pos.dx / cDLen)
-            : isVertical;
+        if (trail.length >= 2) {
+          let remaining = targetDist;
+          // Walk backward through the trail from the head position
+          for (let j = trail.length - 1; j >= 1 && remaining > 0; j--) {
+            const tdx = trail[j].x - trail[j - 1].x;
+            const tdy = trail[j].y - trail[j - 1].y;
+            const segDist = Math.sqrt(tdx * tdx + tdy * tdy);
+            if (segDist < 0.1) continue;
+
+            if (segDist >= remaining) {
+              const t = remaining / segDist;
+              cpx = trail[j].x - tdx * t;
+              cpy = trail[j].y - tdy * t;
+              cIsVert = Math.abs(tdy) > Math.abs(tdx);
+              remaining = 0;
+            } else {
+              remaining -= segDist;
+            }
+          }
+          // If trail was too short, extend from the oldest trail point
+          if (remaining > 0 && trail.length >= 2) {
+            const tdx = trail[1].x - trail[0].x;
+            const tdy = trail[1].y - trail[0].y;
+            const segDist = Math.sqrt(tdx * tdx + tdy * tdy);
+            if (segDist > 0.1) {
+              cpx = trail[0].x - (tdx / segDist) * remaining;
+              cpy = trail[0].y - (tdy / segDist) * remaining;
+            }
+          }
         } else {
-          // Carriage extends past the start of current segment — place behind head
-          // using the TRAIL direction (arrival direction), not the forward path direction
-          const behindX = -trailDirX;
-          const behindY = -trailDirY;
-          cpx = px + behindX * offsetPx;
-          cpy = py + behindY * offsetPx;
-          cIsVert = trailIsVertical;
+          // No trail yet — place behind head using trail direction
+          cpx = px - trailDirX * targetDist;
+          cpy = py - trailDirY * targetDist;
         }
 
         const [cw, ch] = cIsVert ? [CARRIAGE_H, CARRIAGE_W] : [CARRIAGE_W, CARRIAGE_H];
         const carriageColor = styles?.carriageColors[i] ?? colorStr;
         g.roundRect(cpx - cw / 2, cpy - ch / 2, cw, ch, 2)
-          .fill({ color: carriageColor, alpha: 0.85 });
-      }
-    } else {
-      // Fallback: straight line behind head using trail direction
-      const behindX = -trailDirX;
-      const behindY = -trailDirY;
-      for (let i = 0; i < carriageCount; i++) {
-        const offset = hw + 4 + i * (CARRIAGE_W + 3) + CARRIAGE_W / 2;
-        const cx = px + behindX * offset;
-        const cy = py + behindY * offset;
-        const carriageColor = styles?.carriageColors[i] ?? colorStr;
-        g.roundRect(cx - CARRIAGE_W / 2, cy - CARRIAGE_H / 2, CARRIAGE_W, CARRIAGE_H, 2)
           .fill({ color: carriageColor, alpha: 0.85 });
       }
     }
