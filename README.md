@@ -2,6 +2,8 @@
 
 A web-based subway building game where players design track networks, build and customize trains, and watch them run.
 
+Live demo: **https://d1tmob3bfp3y6g.cloudfront.net/** (S3 + CloudFront; sign-in required, accounts are issued by the owner).
+
 ## Features
 
 - **Track Design** — Drag-and-drop subway track building on a grid with blueprint/tech visual style. Place stations, name them (Chinese supported), and connect with color-coded lines.
