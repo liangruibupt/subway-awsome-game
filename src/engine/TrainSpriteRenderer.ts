@@ -3,14 +3,17 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { PixiApp } from './PixiApp';
 import type { SimulationEngine, TrainRunState } from './SimulationEngine';
-import { PAL, PIXEL_FONT, drawCoin, toColorNum, shade } from './MarioArt';
+import { PAL, PIXEL_FONT, drawCoin, toColorNum } from './MarioArt';
+import { drawMetroTop } from './MetroArt';
 
 const GRID_SIZE = 30;
-const HEAD_W = 32;
-const HEAD_H = 14;
-const CARRIAGE_W = 22;
-const CARRIAGE_H = 14;
-const TRAIL_LENGTH = 20;
+// Modern metro cars: long, slim bodies joined by short gangways
+const HEAD_W = 34;
+const HEAD_H = 13;
+const CARRIAGE_W = 28;
+const CARRIAGE_H = 13;
+const CAR_GAP = 2;
+const TRAIL_LENGTH = 200;
 
 interface PathPosition {
   x: number;
@@ -93,8 +96,13 @@ export class TrainSpriteRenderer {
       // Update trail
       if (!this.trails.has(state.id)) this.trails.set(state.id, []);
       const trail = this.trails.get(state.id)!;
-      trail.push({ x: px, y: py });
-      if (trail.length > TRAIL_LENGTH) trail.shift();
+      const last = trail[trail.length - 1];
+      // Only record real movement, so a long dwell doesn't flatten the trail
+      // (carriages keep trailing the way the train actually came in).
+      if (!last || Math.abs(last.x - px) + Math.abs(last.y - py) > 0.5) {
+        trail.push({ x: px, y: py });
+        if (trail.length > TRAIL_LENGTH) trail.shift();
+      }
 
       // Update pulse timer (for stopped/loading)
       if (state.status !== 'running') {
@@ -258,27 +266,11 @@ export class TrainSpriteRenderer {
       }
     }
 
-    const isVertical = Math.abs(dirY) > Math.abs(dirX);
-    const trailIsVertical = Math.abs(trailDirY) > Math.abs(trailDirX);
-
     // ── Train style colors ───────────────────────────────────────────────────
     const styles = this.trainStyles.get(state.id);
     const headColor = styles?.headColor ?? colorStr;
 
     const g = new Graphics();
-
-    // ── Motion trail: little dust puffs behind a running train ──────────────
-    if (state.status === 'running' && trail.length >= 2) {
-      const tailIdx = Math.max(0, trail.length - 1 - Math.min(trail.length - 1, 4 + carriageCount * 2));
-      for (let i = 0; i < 3; i++) {
-        const ti = Math.max(0, tailIdx - i * 3);
-        const p = trail[ti];
-        const age = (i + 1) / 3;
-        const r = 2.5 + age * 3;
-        g.circle(p.x, p.y, r + 1.2).fill({ color: PAL.outline, alpha: 0.35 * (1 - age * 0.6) });
-        g.circle(p.x, p.y, r).fill({ color: PAL.white, alpha: 0.9 * (1 - age * 0.6) });
-      }
-    }
 
     // ── Pulsing ring around the current station when stopped/loading ─────────
     if (state.status !== 'running') {
@@ -298,50 +290,33 @@ export class TrainSpriteRenderer {
       }
     }
 
-    // ── Train head (rotated per segment direction) ───────────────────────────
-    const [headRW, headRH] = isVertical ? [HEAD_H, HEAD_W] : [HEAD_W, HEAD_H];
-    const hw = headRW / 2;
-    const hh = headRH / 2;
-    // Small bob so the train feels alive
-    const bob = state.status === 'running' ? Math.round(Math.sin(this.clock * 18) * 0.8) : 0;
-    const headC = toColorNum(headColor);
-    g.roundRect(px - hw + 2, py - hh + 3, headRW, headRH, 5).fill({ color: 0x000000, alpha: 0.25 });
-    g.roundRect(px - hw, py - hh + bob, headRW, headRH, 5)
-      .fill({ color: headC })
-      .stroke({ color: PAL.outline, width: 2.5 });
-    // Shine stripe along the top/left edge
-    if (isVertical) {
-      g.rect(px - hw + 2.5, py - hh + 4 + bob, 2.5, headRH - 8).fill({ color: shade(headC, 1.5), alpha: 0.9 });
-    } else {
-      g.rect(px - hw + 4, py - hh + 2.5 + bob, headRW - 8, 2.5).fill({ color: shade(headC, 1.5), alpha: 0.9 });
-    }
-    // Windshield at the front end + headlight
+    // ── Driving car (rotated to the current path direction) ──────────────────
+    const layer = new Container();
+    const isLastHead = carriageCount === 0;
     {
-      const ws = 6;
-      const fx = px + dirX * (hw - ws / 2 - 3);
-      const fy = py + dirY * (hh - ws / 2 - 3) + bob;
-      const [ww, wh] = isVertical ? [headRW - 6, ws] : [ws, headRH - 6];
-      g.roundRect(fx - ww / 2, fy - wh / 2, ww, wh, 2).fill({ color: 0x1e3a6e }).stroke({ color: PAL.outline, width: 1.5 });
-      g.rect(fx - ww / 2 + 1, fy - wh / 2 + 1, Math.max(1, ww / 3), Math.max(1, wh / 3)).fill({ color: 0x9ad6ff });
-      const lx = px + dirX * (hw + 1);
-      const ly = py + dirY * (hh + 1) + bob;
-      g.circle(lx, ly, 2.8).fill({ color: PAL.coinLight }).stroke({ color: PAL.outline, width: 1.2 });
+      const hg = new Graphics();
+      drawMetroTop(hg, HEAD_W, HEAD_H, toColorNum(headColor), { head: true, tail: isLastHead });
+      hg.x = px;
+      hg.y = py;
+      hg.rotation = Math.atan2(dirY, dirX);
+      layer.addChild(hg);
     }
 
     // ── Carriages: trail-based positioning ──────────────────────────────────
-    // Each carriage is placed at an earlier position in the movement trail.
-    // This is simple, reliable, and works at corners, stops, and interchange
-    // stations without needing per-segment path lookups.
+    // Each carriage is placed at an earlier position in the movement trail,
+    // rotated to the trail segment it sits on, so cars follow corners and
+    // diagonals naturally.
     {
-      const firstOffset = HEAD_W / 2 + 4 + CARRIAGE_W / 2;
-      const interCarriage = CARRIAGE_W + 3;
+      const firstOffset = HEAD_W / 2 + CAR_GAP + CARRIAGE_W / 2;
+      const interCarriage = CARRIAGE_W + CAR_GAP;
+      const cars: Graphics[] = [];
 
       for (let i = 0; i < carriageCount; i++) {
         const targetDist = firstOffset + i * interCarriage;
 
-        let cpx = px;
-        let cpy = py;
-        let cIsVert = trailIsVertical;
+        let cpx = px - trailDirX * targetDist;
+        let cpy = py - trailDirY * targetDist;
+        let angle = Math.atan2(trailDirY, trailDirX);
 
         if (trail.length >= 2) {
           let remaining = targetDist;
@@ -356,69 +331,41 @@ export class TrainSpriteRenderer {
               const t = remaining / segDist;
               cpx = trail[j].x - tdx * t;
               cpy = trail[j].y - tdy * t;
-              cIsVert = Math.abs(tdy) > Math.abs(tdx);
+              angle = Math.atan2(tdy, tdx);
               remaining = 0;
             } else {
               remaining -= segDist;
             }
           }
           // If trail was too short, extend from the oldest trail point
-          if (remaining > 0 && trail.length >= 2) {
-            const tdx = trail[1].x - trail[0].x;
-            const tdy = trail[1].y - trail[0].y;
-            const segDist = Math.sqrt(tdx * tdx + tdy * tdy);
-            if (segDist > 0.1) {
-              cpx = trail[0].x - (tdx / segDist) * remaining;
-              cpy = trail[0].y - (tdy / segDist) * remaining;
-            }
+          if (remaining > 0) {
+            let tdx = trail[1].x - trail[0].x;
+            let tdy = trail[1].y - trail[0].y;
+            let segDist = Math.sqrt(tdx * tdx + tdy * tdy);
+            if (segDist <= 0.1) { tdx = trailDirX; tdy = trailDirY; segDist = 1; }
+            cpx = trail[0].x - (tdx / segDist) * remaining;
+            cpy = trail[0].y - (tdy / segDist) * remaining;
+            angle = Math.atan2(tdy, tdx);
           }
-        } else {
-          // No trail yet — place behind head using trail direction
-          cpx = px - trailDirX * targetDist;
-          cpy = py - trailDirY * targetDist;
         }
 
-        const [cw, ch] = cIsVert ? [CARRIAGE_H, CARRIAGE_W] : [CARRIAGE_W, CARRIAGE_H];
         const carriageColor = styles?.carriageColors[i] ?? colorStr;
-        const cc = toColorNum(carriageColor);
-        g.roundRect(cpx - cw / 2 + 2, cpy - ch / 2 + 3, cw, ch, 4).fill({ color: 0x000000, alpha: 0.22 });
-        g.roundRect(cpx - cw / 2, cpy - ch / 2, cw, ch, 4)
-          .fill({ color: cc })
-          .stroke({ color: PAL.outline, width: 2.5 });
-        // Two windows along the car
-        const along = cIsVert ? [0, 1] : [1, 0];
-        for (const k of [-1, 1]) {
-          const wx = cpx + along[0] * k * (CARRIAGE_W / 4);
-          const wy = cpy + along[1] * k * (CARRIAGE_W / 4);
-          g.rect(wx - 2.5, wy - 2.5, 5, 5).fill({ color: 0xfff6c0 }).stroke({ color: PAL.outline, width: 1 });
-        }
+        const cg = new Graphics();
+        drawMetroTop(cg, CARRIAGE_W, CARRIAGE_H, toColorNum(carriageColor), {
+          gangway: true,
+          tail: i === carriageCount - 1,
+        });
+        cg.x = cpx;
+        cg.y = cpy;
+        cg.rotation = angle;
+        cars.push(cg);
       }
+      // Stack front-to-back so each gangway tucks under the car in front of it
+      for (const car of cars) layer.addChildAt(car, 0);
     }
 
-    // ── Direction indicator (small triangle pointing forward) ────────────────
-    const arrowStartX = px + dirX * (hw + 2);
-    const arrowStartY = py + dirY * (hh + 2);
-    const arrowLen = 5;
-    const arrowWidth = 4;
-    const tipX = arrowStartX + dirX * arrowLen;
-    const tipY = arrowStartY + dirY * arrowLen;
-    const leftX = arrowStartX - dirY * arrowWidth;
-    const leftY = arrowStartY + dirX * arrowWidth;
-    const rightX = arrowStartX + dirY * arrowWidth;
-    const rightY = arrowStartY - dirX * arrowWidth;
-
-    g.moveTo(tipX, tipY);
-    g.lineTo(leftX, leftY);
-    g.lineTo(rightX, rightY);
-    g.closePath();
-    g.fill({ color: PAL.white, alpha: 0.95 });
-    g.moveTo(tipX, tipY);
-    g.lineTo(leftX, leftY);
-    g.lineTo(rightX, rightY);
-    g.closePath();
-    g.stroke({ color: PAL.outline, width: 1.5 });
-
     trainContainer.addChild(g);
+    trainContainer.addChild(layer);
 
     // ── Passenger dots animating during loading ──────────────────────────────
     if (state.status === 'loading') {

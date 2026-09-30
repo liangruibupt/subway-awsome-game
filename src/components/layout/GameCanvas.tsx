@@ -4,7 +4,6 @@ import { GridRenderer } from '../../engine/GridRenderer';
 import { CameraController } from '../../engine/CameraController';
 import { StationRenderer } from '../../engine/StationRenderer';
 import { TrackRenderer } from '../../engine/TrackRenderer';
-import { CityDecorations } from '../../engine/CityDecorations';
 import { InteractionManager } from '../../engine/InteractionManager';
 import { AssemblyRenderer } from '../../engine/AssemblyRenderer';
 import { SimulationEngine } from '../../engine/SimulationEngine';
@@ -145,10 +144,9 @@ export function GameCanvas() {
       camera.updateGrid();
       cameraRef.current = camera;
 
-      // TrackRenderer first (addChildAt 1), then CityDecorations (addChildAt 1)
-      // so final z-order is: grid(0) → decorations(1) → tracks(2) → stations(3)
+      // Plain grass ground (no scenery) so stations stand out.
+      // z-order: grid(0) → tracks(1) → stations(2)
       const trackRenderer = new TrackRenderer(pixiApp);
-      const cityDecorations = new CityDecorations(pixiApp);
       const stationRenderer = new StationRenderer(pixiApp);
 
       const interaction = new InteractionManager(pixiApp, camera, (gridX, gridY) => {
@@ -270,7 +268,6 @@ export function GameCanvas() {
           interaction.destroy();
         }
         stationRenderer.destroy();
-        cityDecorations.destroy();
         trackRenderer.destroy();
         camera.destroy();
         cameraRef.current = null;
