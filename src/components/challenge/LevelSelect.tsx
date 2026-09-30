@@ -11,8 +11,8 @@ function StarRow({ earned, total = 3 }: { earned: number; total?: number }) {
           key={i}
           style={{
             fontSize: 18,
-            color: i < earned ? '#ffd93d' : '#636e72',
-            textShadow: i < earned ? '0 0 6px #ffd93d88' : 'none',
+            color: i < earned ? '#ffe066' : '#a07850',
+            textShadow: i < earned ? '0 0 6px #ffe06688' : 'none',
           }}
         >
           ★
@@ -50,7 +50,7 @@ export function LevelSelect() {
       style={{
         position: 'absolute',
         inset: 0,
-        background: 'rgba(6,14,31,0.88)',
+        background: 'rgba(26,15,8,0.72)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -60,8 +60,8 @@ export function LevelSelect() {
       {/* Panel */}
       <div
         style={{
-          background: '#0d1f3c',
-          border: '1px solid #1a3a5c',
+          background: '#5c2e0e',
+          border: '1px solid #a0521c',
           borderRadius: 12,
           padding: '28px 24px',
           width: 340,
@@ -74,18 +74,18 @@ export function LevelSelect() {
         <div>
           <div
             style={{
-              fontFamily: "'Courier New', monospace",
+              fontFamily: 'var(--font-ui)',
               fontSize: 22,
               fontWeight: 'bold',
-              color: '#81ecec',
+              color: '#ffcf3f',
               letterSpacing: 3,
-              textShadow: '0 0 10px #81ecec66',
+              textShadow: '0 0 10px #ffcf3f66',
               marginBottom: 6,
             }}
           >
             CHALLENGE MODE
           </div>
-          <div style={{ color: '#b2bec3', fontSize: 13 }}>
+          <div style={{ color: '#f5d9a8', fontSize: 13 }}>
             Test your subway building skills!
           </div>
         </div>
@@ -100,8 +100,8 @@ export function LevelSelect() {
             <div
               key={level.id}
               style={{
-                background: locked ? '#0a1a30' : '#112240',
-                border: `1px solid ${locked ? '#1a3a5c' : '#1e4976'}`,
+                background: locked ? '#4a2409' : '#6b3812',
+                border: `1px solid ${locked ? '#a0521c' : '#b5651d'}`,
                 borderRadius: 8,
                 padding: '14px 16px',
                 display: 'flex',
@@ -114,10 +114,10 @@ export function LevelSelect() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span
                   style={{
-                    fontFamily: "'Courier New', monospace",
+                    fontFamily: 'var(--font-ui)',
                     fontWeight: 'bold',
                     fontSize: 14,
-                    color: locked ? '#b2bec3' : '#dfe6e9',
+                    color: locked ? '#f5d9a8' : '#fff8e7',
                     letterSpacing: 1,
                   }}
                 >
@@ -127,7 +127,7 @@ export function LevelSelect() {
               </div>
 
               {/* Description */}
-              <div style={{ color: '#b2bec3', fontSize: 12, lineHeight: 1.5 }}>
+              <div style={{ color: '#f5d9a8', fontSize: 12, lineHeight: 1.5 }}>
                 {level.description}
               </div>
 
@@ -136,9 +136,9 @@ export function LevelSelect() {
                 {level.objectives.map((obj) => (
                   <div
                     key={obj.type}
-                    style={{ color: '#81ecec', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}
+                    style={{ color: '#ffcf3f', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}
                   >
-                    <span style={{ color: '#81ecec' }}>›</span>
+                    <span style={{ color: '#ffcf3f' }}>›</span>
                     {obj.label}
                   </div>
                 ))}
@@ -148,13 +148,13 @@ export function LevelSelect() {
               {locked ? (
                 <div
                   style={{
-                    background: '#1a3a5c',
+                    background: '#a0521c',
                     borderRadius: 4,
                     padding: '7px 0',
                     textAlign: 'center',
                     fontSize: 11,
-                    color: '#b2bec3',
-                    fontFamily: "'Courier New', monospace",
+                    color: '#f5d9a8',
+                    fontFamily: 'var(--font-ui)',
                     letterSpacing: 1,
                   }}
                 >
@@ -164,20 +164,20 @@ export function LevelSelect() {
                 <button
                   onClick={() => handlePlay(level.id)}
                   style={{
-                    background: '#00b894',
+                    background: '#43b047',
                     border: 'none',
                     borderRadius: 4,
                     padding: '8px 0',
                     color: '#fff',
-                    fontFamily: "'Courier New', monospace",
+                    fontFamily: 'var(--font-ui)',
                     fontWeight: 'bold',
                     fontSize: 12,
                     letterSpacing: 2,
                     cursor: 'pointer',
                     transition: 'background 0.15s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#00d1a7')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '#00b894')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#5cc85c')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#43b047')}
                 >
                   PLAY
                 </button>
@@ -191,23 +191,23 @@ export function LevelSelect() {
           onClick={handleBack}
           style={{
             background: 'transparent',
-            border: '1px solid #1a3a5c',
+            border: '1px solid #a0521c',
             borderRadius: 4,
             padding: '8px 0',
-            color: '#b2bec3',
-            fontFamily: "'Courier New', monospace",
+            color: '#f5d9a8',
+            fontFamily: 'var(--font-ui)',
             fontSize: 12,
             letterSpacing: 2,
             cursor: 'pointer',
             transition: 'color 0.15s, border-color 0.15s',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = '#dfe6e9';
-            e.currentTarget.style.borderColor = '#3d6e9c';
+            e.currentTarget.style.color = '#fff8e7';
+            e.currentTarget.style.borderColor = '#d8903a';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.color = '#b2bec3';
-            e.currentTarget.style.borderColor = '#1a3a5c';
+            e.currentTarget.style.color = '#f5d9a8';
+            e.currentTarget.style.borderColor = '#a0521c';
           }}
         >
           BACK TO SANDBOX

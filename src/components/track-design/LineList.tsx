@@ -3,8 +3,8 @@ import { useMapStore } from '../../stores/mapStore';
 import { useUIStore } from '../../stores/uiStore';
 
 const PRESET_COLORS = [
-  '#ff6b6b', '#74b9ff', '#55efc4', '#ffd93d',
-  '#a29bfe', '#fd79a8', '#e17055', '#00cec9',
+  '#e52521', '#74b9ff', '#7ee05a', '#ffe066',
+  '#5c94fc', '#fd79a8', '#e17055', '#ffb400',
 ];
 
 /**
@@ -49,7 +49,7 @@ export function LineList() {
           style={{
             fontSize: 15,
             fontWeight: 700,
-            color: '#dfe6e9',
+            color: '#fff8e7',
             letterSpacing: 0.4,
           }}
         >
@@ -62,7 +62,7 @@ export function LineList() {
 
       {/* Line list */}
       {lines.length === 0 && (
-        <div style={{ fontSize: 12, color: '#b2bec3', fontStyle: 'italic' }}>
+        <div style={{ fontSize: 12, color: '#f5d9a8', fontStyle: 'italic' }}>
           No lines yet — add one below!
         </div>
       )}
@@ -103,7 +103,7 @@ export function LineList() {
                 style={{
                   fontSize: 13,
                   fontWeight: 600,
-                  color: '#dfe6e9',
+                  color: '#fff8e7',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -111,7 +111,7 @@ export function LineList() {
               >
                 {line.name}
               </div>
-              <div style={{ fontSize: 11, color: '#b2bec3' }}>
+              <div style={{ fontSize: 11, color: '#f5d9a8' }}>
                 {count} {count === 1 ? 'station' : 'stations'}
               </div>
             </div>
@@ -130,9 +130,9 @@ export function LineList() {
           style={{
             padding: '9px 0',
             borderRadius: 8,
-            border: '1.5px dashed #6c5ce7',
+            border: '1.5px dashed #3a6ee8',
             background: 'transparent',
-            color: '#a29bfe',
+            color: '#5c94fc',
             fontSize: 13,
             fontWeight: 600,
             cursor: 'pointer',
@@ -149,8 +149,8 @@ export function LineList() {
             gap: 10,
             padding: 12,
             borderRadius: 8,
-            background: 'rgba(108,92,231,0.08)',
-            border: '1px solid rgba(108,92,231,0.3)',
+            background: 'rgba(92,148,252,0.15)',
+            border: '1px solid rgba(92,148,252,0.4)',
           }}
         >
           {/* Name input */}
@@ -164,12 +164,12 @@ export function LineList() {
               if (e.key === 'Escape') setShowForm(false);
             }}
             style={{
-              background: '#0d0b1e',
-              border: '1.5px solid #6c5ce7',
+              background: '#2a1405',
+              border: '1.5px solid #3a6ee8',
               borderRadius: 6,
               padding: '7px 10px',
               fontSize: 13,
-              color: '#dfe6e9',
+              color: '#fff8e7',
               outline: 'none',
               width: '100%',
               boxSizing: 'border-box',
@@ -203,9 +203,9 @@ export function LineList() {
                 flex: 1,
                 padding: '7px 0',
                 borderRadius: 6,
-                border: '1px solid #b2bec3',
+                border: '1px solid #f5d9a8',
                 background: 'transparent',
-                color: '#b2bec3',
+                color: '#f5d9a8',
                 fontSize: 12,
                 cursor: 'pointer',
                 fontWeight: 600,

@@ -33,10 +33,10 @@ export function SpeedControls() {
     }}>
       {/* Time display */}
       <div style={{
-        fontFamily: 'Courier New, monospace',
+        fontFamily: 'var(--font-ui)',
         fontSize: 12,
         fontWeight: 'bold',
-        color: '#81ecec',
+        color: '#ffcf3f',
         minWidth: 80,
       }}>
         {formatTime(time)}
@@ -47,12 +47,12 @@ export function SpeedControls() {
         onClick={togglePause}
         style={{
           padding: '4px 10px',
-          background: paused ? '#00b89422' : '#ffd93d22',
-          border: `1px solid ${paused ? '#00b894' : '#ffd93d'}`,
+          background: paused ? '#43b04722' : '#ffe06622',
+          border: `1px solid ${paused ? '#43b047' : '#ffe066'}`,
           borderRadius: 4,
-          color: paused ? '#00b894' : '#ffd93d',
+          color: paused ? '#43b047' : '#ffe066',
           fontSize: 11,
-          fontFamily: 'Courier New, monospace',
+          fontFamily: 'var(--font-ui)',
           fontWeight: 'bold',
           cursor: 'pointer',
           letterSpacing: 0.5,
@@ -69,12 +69,12 @@ export function SpeedControls() {
             onClick={() => setSpeed(s)}
             style={{
               padding: '4px 8px',
-              background: speed === s ? '#00b89433' : 'transparent',
-              border: `1px solid ${speed === s ? '#00b894' : '#1a3a5c'}`,
+              background: speed === s ? '#43b04733' : 'transparent',
+              border: `1px solid ${speed === s ? '#43b047' : '#a0521c'}`,
               borderRadius: 4,
-              color: speed === s ? '#00b894' : '#b2bec3',
-              fontSize: 10,
-              fontFamily: 'Courier New, monospace',
+              color: speed === s ? '#43b047' : '#f5d9a8',
+              fontSize: 12,
+              fontFamily: 'var(--font-ui)',
               fontWeight: 'bold',
               cursor: 'pointer',
               transition: 'all 0.15s',
@@ -88,9 +88,9 @@ export function SpeedControls() {
       {/* Dwell time slider */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{
-          fontFamily: 'Courier New, monospace',
-          fontSize: 10,
-          color: '#b2bec3',
+          fontFamily: 'var(--font-ui)',
+          fontSize: 12,
+          color: '#f5d9a8',
           whiteSpace: 'nowrap',
         }}>
           Station Wait Time
@@ -105,9 +105,9 @@ export function SpeedControls() {
           style={{ width: 80 }}
         />
         <span style={{
-          fontFamily: 'Courier New, monospace',
-          fontSize: 10,
-          color: '#81ecec',
+          fontFamily: 'var(--font-ui)',
+          fontSize: 12,
+          color: '#ffcf3f',
           minWidth: 60,
         }}>
           {dwellTime} seconds
@@ -117,9 +117,9 @@ export function SpeedControls() {
       {/* Boarding slider */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{
-          fontFamily: 'Courier New, monospace',
-          fontSize: 10,
-          color: '#b2bec3',
+          fontFamily: 'var(--font-ui)',
+          fontSize: 12,
+          color: '#f5d9a8',
           whiteSpace: 'nowrap',
         }}>
           Boarding
@@ -134,9 +134,9 @@ export function SpeedControls() {
           style={{ width: 80 }}
         />
         <span style={{
-          fontFamily: 'Courier New, monospace',
-          fontSize: 10,
-          color: '#81ecec',
+          fontFamily: 'var(--font-ui)',
+          fontSize: 12,
+          color: '#ffcf3f',
           minWidth: 20,
         }}>
           {boardingPerStation}
@@ -146,9 +146,9 @@ export function SpeedControls() {
       {/* Alighting slider */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{
-          fontFamily: 'Courier New, monospace',
-          fontSize: 10,
-          color: '#b2bec3',
+          fontFamily: 'var(--font-ui)',
+          fontSize: 12,
+          color: '#f5d9a8',
           whiteSpace: 'nowrap',
         }}>
           Alighting
@@ -163,9 +163,9 @@ export function SpeedControls() {
           style={{ width: 80 }}
         />
         <span style={{
-          fontFamily: 'Courier New, monospace',
-          fontSize: 10,
-          color: '#81ecec',
+          fontFamily: 'var(--font-ui)',
+          fontSize: 12,
+          color: '#ffcf3f',
           minWidth: 20,
         }}>
           {alightingPerStation}
@@ -174,9 +174,9 @@ export function SpeedControls() {
 
       {/* Capacity label */}
       <span style={{
-        fontFamily: 'Courier New, monospace',
-        fontSize: 10,
-        color: '#b2bec3',
+        fontFamily: 'var(--font-ui)',
+        fontSize: 12,
+        color: '#f5d9a8',
         whiteSpace: 'nowrap',
       }}>
         Max 20 per car

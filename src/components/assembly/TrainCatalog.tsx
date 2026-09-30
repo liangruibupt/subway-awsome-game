@@ -14,13 +14,13 @@ const ERA_TABS: { era: Era; label: string }[] = [
 ];
 
 const sectionTitle: React.CSSProperties = {
-  fontSize: 9,
+  fontSize: 11,
   fontWeight: 'bold',
   letterSpacing: 1,
-  color: '#dfe6e9',
+  color: '#fff8e7',
   marginBottom: 4,
   textTransform: 'uppercase',
-  fontFamily: 'Courier New, monospace',
+  fontFamily: 'var(--font-ui)',
 };
 
 function CatalogCard({
@@ -36,7 +36,7 @@ function CatalogCard({
   accentColor?: string;
   badge?: React.ReactNode;
 }) {
-  const borderColor = accentColor ?? '#81ecec';
+  const borderColor = accentColor ?? '#ffcf3f';
   return (
     <button
       key={item.type}
@@ -47,8 +47,8 @@ function CatalogCard({
         flexDirection: 'column',
         alignItems: 'flex-start',
         padding: '6px 8px',
-        background: disabled ? '#060e1f' : '#0d1f3c',
-        border: '1px solid #1a3a5c',
+        background: disabled ? '#3b1e08' : '#5c2e0e',
+        border: '1px solid #a0521c',
         borderRadius: 4,
         cursor: disabled ? 'not-allowed' : 'pointer',
         textAlign: 'left',
@@ -59,26 +59,26 @@ function CatalogCard({
       onMouseEnter={(e) => {
         if (disabled) return;
         (e.currentTarget as HTMLButtonElement).style.borderColor = borderColor;
-        (e.currentTarget as HTMLButtonElement).style.background  = '#1a3a5c55';
+        (e.currentTarget as HTMLButtonElement).style.background  = '#a0521c55';
       }}
       onMouseLeave={(e) => {
         if (disabled) return;
-        (e.currentTarget as HTMLButtonElement).style.borderColor = '#1a3a5c';
-        (e.currentTarget as HTMLButtonElement).style.background  = '#0d1f3c';
+        (e.currentTarget as HTMLButtonElement).style.borderColor = '#a0521c';
+        (e.currentTarget as HTMLButtonElement).style.background  = '#5c2e0e';
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
         <span style={{
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: 'bold',
-          color: '#dfe6e9',
-          fontFamily: 'Courier New, monospace',
+          color: '#fff8e7',
+          fontFamily: 'var(--font-ui)',
         }}>
           {item.label}
         </span>
         {badge}
       </div>
-      <div style={{ fontSize: 8, color: '#b2bec3', marginTop: 2, lineHeight: 1.3 }}>
+      <div style={{ fontSize: 10, color: '#f5d9a8', marginTop: 2, lineHeight: 1.3 }}>
         {item.description}
       </div>
     </button>
@@ -132,12 +132,12 @@ export function TrainCatalog() {
         {/* Title */}
         <div>
           <div style={{
-            fontSize: 11, fontWeight: 'bold', color: '#81ecec',
-            letterSpacing: 1, fontFamily: 'Courier New, monospace',
+            fontSize: 11, fontWeight: 'bold', color: '#ffcf3f',
+            letterSpacing: 1, fontFamily: 'var(--font-ui)',
           }}>
             Pick Your Head
           </div>
-          <div style={{ fontSize: 9, color: '#b2bec3', marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: '#f5d9a8', marginTop: 2 }}>
             Choose the front of your train
           </div>
         </div>
@@ -151,13 +151,13 @@ export function TrainCatalog() {
               style={{
                 flex: 1,
                 padding: '4px 0',
-                fontSize: 9,
-                fontFamily: 'Courier New, monospace',
+                fontSize: 11,
+                fontFamily: 'var(--font-ui)',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                border: selectedEra === era ? '1px solid #a29bfe' : '1px solid #1a3a5c',
-                background: selectedEra === era ? '#2d1b6988' : 'transparent',
-                color: selectedEra === era ? '#a29bfe' : '#b2bec3',
+                border: selectedEra === era ? '1px solid #5c94fc' : '1px solid #a0521c',
+                background: selectedEra === era ? '#7a2a0088' : 'transparent',
+                color: selectedEra === era ? '#5c94fc' : '#f5d9a8',
                 borderRadius: 3,
                 transition: 'all 0.15s',
               }}
@@ -176,7 +176,7 @@ export function TrainCatalog() {
                 key={item.type}
                 item={item}
                 onClick={() => handleHeadClick(item)}
-                accentColor="#81ecec"
+                accentColor="#ffcf3f"
               />
             ))}
           </div>
@@ -198,19 +198,19 @@ export function TrainCatalog() {
         style={{
           padding: '7px 0',
           background: 'transparent',
-          color: '#a29bfe',
-          border: '1px solid #a29bfe',
+          color: '#5c94fc',
+          border: '1px solid #5c94fc',
           borderRadius: 4,
           cursor: 'pointer',
-          fontSize: 10,
-          fontFamily: 'Courier New, monospace',
+          fontSize: 12,
+          fontFamily: 'var(--font-ui)',
           fontWeight: 'bold',
           letterSpacing: 1,
           width: '100%',
           transition: 'background 0.15s',
         }}
         onMouseEnter={(e) =>
-          ((e.currentTarget as HTMLButtonElement).style.background = '#2d1b6944')
+          ((e.currentTarget as HTMLButtonElement).style.background = '#7a2a0044')
         }
         onMouseLeave={(e) =>
           ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')
@@ -222,19 +222,19 @@ export function TrainCatalog() {
       {/* Title */}
       <div>
         <div style={{
-          fontSize: 11, fontWeight: 'bold', color: '#81ecec',
-          letterSpacing: 1, fontFamily: 'Courier New, monospace',
+          fontSize: 11, fontWeight: 'bold', color: '#ffcf3f',
+          letterSpacing: 1, fontFamily: 'var(--font-ui)',
         }}>
           Add Carriages
         </div>
-        <div style={{ fontSize: 9, color: '#b2bec3', marginTop: 2 }}>
+        <div style={{ fontSize: 11, color: '#f5d9a8', marginTop: 2 }}>
           Click the catalog or tap a + slot
         </div>
       </div>
 
       {/* Max warning */}
       {atMaxCarriages && (
-        <div style={{ fontSize: 9, color: '#ffd93d', fontFamily: 'Courier New, monospace' }}>
+        <div style={{ fontSize: 11, color: '#ffe066', fontFamily: 'var(--font-ui)' }}>
           Maximum 7 carriages reached!
         </div>
       )}
@@ -247,13 +247,13 @@ export function TrainCatalog() {
             const xlBadge =
               item.carriageType === 'widebody' ? (
                 <span style={{
-                  fontSize: 7,
-                  background: '#ffd93d',
-                  color: '#060e1f',
+                  fontSize: 9,
+                  background: '#ffe066',
+                  color: '#3b1e08',
                   padding: '1px 4px',
                   borderRadius: 2,
                   fontWeight: 'bold',
-                  fontFamily: 'Courier New, monospace',
+                  fontFamily: 'var(--font-ui)',
                 }}>
                   XL
                 </span>
@@ -264,7 +264,7 @@ export function TrainCatalog() {
                 item={item}
                 onClick={() => handleCarriageClick(item)}
                 disabled={atMaxCarriages}
-                accentColor="#00b894"
+                accentColor="#43b047"
                 badge={xlBadge}
               />
             );

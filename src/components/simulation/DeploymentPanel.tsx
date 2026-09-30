@@ -34,23 +34,23 @@ export function DeploymentPanel() {
       <div style={{
         fontSize: 11,
         fontWeight: 'bold',
-        color: '#81ecec',
+        color: '#ffcf3f',
         letterSpacing: 1,
-        fontFamily: 'Courier New, monospace',
+        fontFamily: 'var(--font-ui)',
         marginBottom: 2,
       }}>
         Deploy Your Trains
       </div>
-      <div style={{ fontSize: 9, color: '#b2bec3', fontFamily: 'Courier New, monospace', marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: '#f5d9a8', fontFamily: 'var(--font-ui)', marginBottom: 12 }}>
         Assign trains to lines before running the simulation
       </div>
 
       {/* No trains at all */}
       {trains.length === 0 && (
         <div style={{
-          fontSize: 10,
-          color: '#ffd93d',
-          fontFamily: 'Courier New, monospace',
+          fontSize: 12,
+          color: '#ffe066',
+          fontFamily: 'var(--font-ui)',
           padding: '8px 0',
           textAlign: 'center',
         }}>
@@ -61,13 +61,13 @@ export function DeploymentPanel() {
       {/* All trains deployed banner */}
       {allDeployed && (
         <div style={{
-          fontSize: 9,
-          color: '#00b894',
-          fontFamily: 'Courier New, monospace',
+          fontSize: 11,
+          color: '#43b047',
+          fontFamily: 'var(--font-ui)',
           marginBottom: 8,
           padding: '4px 8px',
-          background: '#00b89418',
-          border: '1px solid #00b89444',
+          background: '#43b04718',
+          border: '1px solid #43b04744',
           borderRadius: 4,
         }}>
           All trains are deployed!
@@ -88,8 +88,8 @@ export function DeploymentPanel() {
                 alignItems: 'flex-start',
                 gap: 8,
                 padding: '7px 8px',
-                background: '#060e1f',
-                border: '1px solid #1a3a5c',
+                background: '#3b1e08',
+                border: '1px solid #a0521c',
                 borderRadius: 4,
               }}
             >
@@ -105,10 +105,10 @@ export function DeploymentPanel() {
 
               {/* Line info */}
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, color: '#dfe6e9', fontFamily: 'Courier New, monospace', fontWeight: 'bold' }}>
+                <div style={{ fontSize: 12, color: '#fff8e7', fontFamily: 'var(--font-ui)', fontWeight: 'bold' }}>
                   {line.name}
                 </div>
-                <div style={{ fontSize: 8, color: '#b2bec3', fontFamily: 'Courier New, monospace', marginTop: 1 }}>
+                <div style={{ fontSize: 10, color: '#f5d9a8', fontFamily: 'var(--font-ui)', marginTop: 1 }}>
                   {line.stationIds.length} station{line.stationIds.length !== 1 ? 's' : ''}
                 </div>
               </div>
@@ -116,22 +116,22 @@ export function DeploymentPanel() {
               {/* Action */}
               {assignedTrain ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
-                  <span style={{ fontSize: 8, color: '#00b894', fontFamily: 'Courier New, monospace' }}>
+                  <span style={{ fontSize: 10, color: '#43b047', fontFamily: 'var(--font-ui)' }}>
                     Deployed
                   </span>
-                  <span style={{ fontSize: 8, color: '#b2bec3', fontFamily: 'Courier New, monospace' }}>
+                  <span style={{ fontSize: 10, color: '#f5d9a8', fontFamily: 'var(--font-ui)' }}>
                     Train {trains.indexOf(assignedTrain) + 1}
                   </span>
                   <button
                     onClick={() => handleRemove(assignedTrain.id)}
                     style={{
                       padding: '2px 6px',
-                      background: '#ff6b6b22',
-                      border: '1px solid #ff6b6b',
+                      background: '#e5252122',
+                      border: '1px solid #e52521',
                       borderRadius: 3,
-                      color: '#ff6b6b',
-                      fontSize: 8,
-                      fontFamily: 'Courier New, monospace',
+                      color: '#e52521',
+                      fontSize: 10,
+                      fontFamily: 'var(--font-ui)',
                       fontWeight: 'bold',
                       cursor: 'pointer',
                     }}
@@ -143,7 +143,7 @@ export function DeploymentPanel() {
                 /* Train picker */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0, minWidth: 100 }}>
                   {unassignedTrains.length === 0 ? (
-                    <div style={{ fontSize: 8, color: '#b2bec3', fontFamily: 'Courier New, monospace', fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 10, color: '#f5d9a8', fontFamily: 'var(--font-ui)', fontStyle: 'italic' }}>
                       No available trains
                     </div>
                   ) : (
@@ -155,12 +155,12 @@ export function DeploymentPanel() {
                           onClick={() => handleDeployTrain(line.id, train.id)}
                           style={{
                             padding: '3px 6px',
-                            background: '#00b89433',
-                            border: '1px solid #00b894',
+                            background: '#43b04733',
+                            border: '1px solid #43b047',
                             borderRadius: 3,
-                            color: '#00b894',
-                            fontSize: 8,
-                            fontFamily: 'Courier New, monospace',
+                            color: '#43b047',
+                            fontSize: 10,
+                            fontFamily: 'var(--font-ui)',
                             fontWeight: 'bold',
                             cursor: 'pointer',
                             textAlign: 'left',
@@ -176,11 +176,11 @@ export function DeploymentPanel() {
                     style={{
                       padding: '2px 6px',
                       background: 'transparent',
-                      border: '1px solid #1a3a5c',
+                      border: '1px solid #a0521c',
                       borderRadius: 3,
-                      color: '#b2bec3',
-                      fontSize: 8,
-                      fontFamily: 'Courier New, monospace',
+                      color: '#f5d9a8',
+                      fontSize: 10,
+                      fontFamily: 'var(--font-ui)',
                       cursor: 'pointer',
                     }}
                   >
@@ -193,12 +193,12 @@ export function DeploymentPanel() {
                   disabled={unassignedTrains.length === 0}
                   style={{
                     padding: '3px 8px',
-                    background: unassignedTrains.length > 0 ? '#00b89433' : 'transparent',
-                    border: `1px solid ${unassignedTrains.length > 0 ? '#00b894' : '#1a3a5c'}`,
+                    background: unassignedTrains.length > 0 ? '#43b04733' : 'transparent',
+                    border: `1px solid ${unassignedTrains.length > 0 ? '#43b047' : '#a0521c'}`,
                     borderRadius: 3,
-                    color: unassignedTrains.length > 0 ? '#00b894' : '#b2bec3',
-                    fontSize: 9,
-                    fontFamily: 'Courier New, monospace',
+                    color: unassignedTrains.length > 0 ? '#43b047' : '#f5d9a8',
+                    fontSize: 11,
+                    fontFamily: 'var(--font-ui)',
                     fontWeight: 'bold',
                     cursor: unassignedTrains.length > 0 ? 'pointer' : 'not-allowed',
                     opacity: unassignedTrains.length > 0 ? 1 : 0.5,
@@ -213,7 +213,7 @@ export function DeploymentPanel() {
         })}
 
         {lines.length === 0 && trains.length > 0 && (
-          <div style={{ fontSize: 9, color: '#b2bec3', fontFamily: 'Courier New, monospace', textAlign: 'center', padding: '8px 0' }}>
+          <div style={{ fontSize: 11, color: '#f5d9a8', fontFamily: 'var(--font-ui)', textAlign: 'center', padding: '8px 0' }}>
             No lines yet — build tracks first!
           </div>
         )}

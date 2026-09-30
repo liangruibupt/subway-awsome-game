@@ -125,7 +125,7 @@ export function GameCanvas() {
     pixiApp.clearStageExtras();
 
     if (mode === 'assembly') {
-      pixiApp.app.renderer.background.color = 0x1a1a2e;
+      pixiApp.app.renderer.background.color = 0x5c94fc;
       pixiApp.worldContainer.visible = false;
 
       const assemblyRenderer = new AssemblyRenderer(pixiApp);
@@ -136,8 +136,8 @@ export function GameCanvas() {
         pixiApp.worldContainer.visible = true;
       };
     } else {
-      // ── Track-design & simulation: blueprint view ──
-      pixiApp.app.renderer.background.color = 0x0a1628;
+      // ── Track-design & simulation: grassy overworld view ──
+      pixiApp.app.renderer.background.color = 0x7ccd4c;
       pixiApp.worldContainer.visible = true;
 
       const grid = new GridRenderer(pixiApp);
@@ -222,7 +222,7 @@ export function GameCanvas() {
                   'london':  '#c0392b',
                   'newyork': '#7f8c8d',
                   'neo':     '#2d3436',
-                  'quantum': '#6c5ce7',
+                  'quantum': '#3a6ee8',
                 };
                 trainStyles.set(train.id, {
                   headColor: HEAD_CITY_COLORS[train.head.city] ?? '#0984e3',

@@ -85,9 +85,13 @@ export function MiniMap({ onJump }: MiniMapProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Background
-    ctx.fillStyle = '#0d1f3c';
+    // Background: grass with a light checker, like a tiny world map
+    ctx.fillStyle = '#7ccd4c';
     ctx.fillRect(0, 0, MM_WIDTH, MM_HEIGHT);
+    ctx.fillStyle = 'rgba(47,122,30,0.18)';
+    for (let yy = 0; yy < MM_HEIGHT; yy += 10) {
+      for (let xx = (yy / 10) % 2 === 0 ? 0 : 10; xx < MM_WIDTH; xx += 20) ctx.fillRect(xx, yy, 10, 10);
+    }
 
     const { scale, offsetX, offsetY } = computeMapping(stations, tracks);
     const toMM = (wx: number, wy: number) => worldToMM(wx, wy, scale, offsetX, offsetY);
@@ -109,18 +113,23 @@ export function MiniMap({ onJump }: MiniMapProps) {
         const pt = toMM(track.path[i].x * GRID_SIZE, track.path[i].y * GRID_SIZE);
         ctx.lineTo(pt.x, pt.y);
       }
+      ctx.strokeStyle = '#1a0f08';
+      ctx.lineWidth   = 4;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+      ctx.stroke();
       ctx.strokeStyle = color;
-      ctx.lineWidth   = 1;
+      ctx.lineWidth   = 2;
       ctx.stroke();
     }
 
-    // Stations — cyan dots 2 px radius
-    ctx.fillStyle = '#00cec9';
+    // Stations — little orange level tiles
     for (const station of stations) {
       const pt = toMM(station.x * GRID_SIZE, station.y * GRID_SIZE);
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = '#1a0f08';
+      ctx.fillRect(Math.round(pt.x) - 3, Math.round(pt.y) - 3, 6, 6);
+      ctx.fillStyle = station.type === 'interchange' ? '#fcbc3c' : '#f89830';
+      ctx.fillRect(Math.round(pt.x) - 2, Math.round(pt.y) - 2, 4, 4);
     }
 
     // Viewport rectangle
@@ -136,8 +145,8 @@ export function MiniMap({ onJump }: MiniMapProps) {
     const vTL = toMM(viewLeft,  viewTop);
     const vBR = toMM(viewRight, viewBottom);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-    ctx.lineWidth   = 1;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth   = 2;
     ctx.strokeRect(vTL.x, vTL.y, vBR.x - vTL.x, vBR.y - vTL.y);
   }, [stations, tracks, lines, cameraX, cameraY, zoomLevel]);
 
@@ -168,9 +177,10 @@ export function MiniMap({ onJump }: MiniMapProps) {
         bottom: 8,
         right: 8,
         zIndex: 10,
-        background: '#0d1f3c',
-        border: '1px solid #1a3a5c',
+        background: '#7ccd4c',
+        border: '3px solid #1a0f08',
         borderRadius: 4,
+        boxShadow: '0 4px 0 #1a0f08',
         cursor: 'pointer',
       }}
       onClick={handleClick}

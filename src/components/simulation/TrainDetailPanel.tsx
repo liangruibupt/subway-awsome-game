@@ -21,16 +21,16 @@ export function TrainDetailPanel({ trainId }: Props) {
   return (
     <div style={{
       padding: '12px',
-      background: '#0d1f3c',
-      border: '1px solid #1a3a5c',
+      background: '#5c2e0e',
+      border: '1px solid #a0521c',
       borderRadius: 6,
     }}>
       {/* Title */}
       <div style={{
         fontSize: 11,
         fontWeight: 'bold',
-        color: '#81ecec',
-        fontFamily: 'Courier New, monospace',
+        color: '#ffcf3f',
+        fontFamily: 'var(--font-ui)',
         letterSpacing: 1,
         marginBottom: 8,
       }}>
@@ -39,26 +39,26 @@ export function TrainDetailPanel({ trainId }: Props) {
 
       {/* Train type / era */}
       <div style={{
-        fontSize: 10,
-        color: '#dfe6e9',
-        fontFamily: 'Courier New, monospace',
+        fontSize: 12,
+        color: '#fff8e7',
+        fontFamily: 'var(--font-ui)',
         marginBottom: 8,
       }}>
         {train.head.type}{' '}
-        <span style={{ color: '#b2bec3', fontSize: 9 }}>({train.head.era})</span>
+        <span style={{ color: '#f5d9a8', fontSize: 11 }}>({train.head.era})</span>
       </div>
 
       {/* Status badge */}
       <div style={{ marginBottom: 10 }}>
         <span style={{
-          fontSize: 9,
-          fontFamily: 'Courier New, monospace',
+          fontSize: 11,
+          fontFamily: 'var(--font-ui)',
           fontWeight: 'bold',
           padding: '2px 7px',
           borderRadius: 3,
-          background: train.lineId ? '#00b89422' : '#ffd93d22',
-          color: train.lineId ? '#00b894' : '#ffd93d',
-          border: `1px solid ${train.lineId ? '#00b894' : '#ffd93d'}`,
+          background: train.lineId ? '#43b04722' : '#ffe06622',
+          color: train.lineId ? '#43b047' : '#ffe066',
+          border: `1px solid ${train.lineId ? '#43b047' : '#ffe066'}`,
         }}>
           {train.lineId ? 'Assigned' : 'Undeployed'}
         </span>
@@ -66,21 +66,21 @@ export function TrainDetailPanel({ trainId }: Props) {
 
       {/* Passengers */}
       <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 9, color: '#b2bec3', fontFamily: 'Courier New, monospace', marginBottom: 3 }}>
+        <div style={{ fontSize: 11, color: '#f5d9a8', fontFamily: 'var(--font-ui)', marginBottom: 3 }}>
           Passengers
         </div>
-        <div style={{ fontSize: 18, fontWeight: 'bold', color: '#dfe6e9', fontFamily: 'Courier New, monospace', lineHeight: 1 }}>
+        <div style={{ fontSize: 18, fontWeight: 'bold', color: '#fff8e7', fontFamily: 'var(--font-ui)', lineHeight: 1 }}>
           {passengers}{' '}
-          <span style={{ fontSize: 11, color: '#b2bec3' }}>/ {capacity}</span>
+          <span style={{ fontSize: 11, color: '#f5d9a8' }}>/ {capacity}</span>
         </div>
       </div>
 
       {/* Capacity bar */}
-      <div style={{ height: 6, background: '#1a3a5c', borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ height: 6, background: '#a0521c', borderRadius: 3, overflow: 'hidden' }}>
         <div style={{
           height: '100%',
           width: `${passengerPct}%`,
-          background: '#81ecec',
+          background: '#ffcf3f',
           borderRadius: 3,
           transition: 'width 0.3s',
         }} />

@@ -31,10 +31,10 @@ export function StationProperties() {
       : 'Normal Station';
 
   const typeColor = isTerminal
-    ? '#ffd93d'
+    ? '#ffe066'
     : isTransfer
-      ? '#a29bfe'
-      : '#55efc4';
+      ? '#5c94fc'
+      : '#7ee05a';
 
   const handleRename = () => {
     const val = inputRef.current?.value.trim() ?? '';
@@ -54,7 +54,7 @@ export function StationProperties() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Header */}
       <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#dfe6e9', letterSpacing: 0.4 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#fff8e7', letterSpacing: 0.4 }}>
           Station Details
         </div>
         <div style={{ fontSize: 11, color: '#74b9ff', marginTop: 3 }}>
@@ -64,7 +64,7 @@ export function StationProperties() {
 
       {/* Editable name */}
       <div>
-        <div style={{ fontSize: 11, color: '#b2bec3', marginBottom: 5 }}>Station Name</div>
+        <div style={{ fontSize: 11, color: '#f5d9a8', marginBottom: 5 }}>Station Name</div>
         <input
           ref={inputRef}
           type="text"
@@ -73,12 +73,12 @@ export function StationProperties() {
           onBlur={handleRename}
           onKeyDown={handleKeyDown}
           style={{
-            background: '#0d0b1e',
-            border: '1.5px solid #6c5ce7',
+            background: '#2a1405',
+            border: '1.5px solid #3a6ee8',
             borderRadius: 6,
             padding: '7px 10px',
             fontSize: 13,
-            color: '#dfe6e9',
+            color: '#fff8e7',
             outline: 'none',
             width: '100%',
             boxSizing: 'border-box',
@@ -88,7 +88,7 @@ export function StationProperties() {
 
       {/* Type badge */}
       <div>
-        <div style={{ fontSize: 11, color: '#b2bec3', marginBottom: 5 }}>Station Type</div>
+        <div style={{ fontSize: 11, color: '#f5d9a8', marginBottom: 5 }}>Station Type</div>
         <span
           style={{
             display: 'inline-block',
@@ -108,7 +108,7 @@ export function StationProperties() {
             style={{
               marginTop: 6,
               fontSize: 11,
-              color: '#a29bfe',
+              color: '#5c94fc',
               fontStyle: 'italic',
             }}
           >
@@ -120,7 +120,7 @@ export function StationProperties() {
       {/* Lines this station belongs to */}
       {stationLines.length > 0 && (
         <div>
-          <div style={{ fontSize: 11, color: '#b2bec3', marginBottom: 6 }}>On These Lines</div>
+          <div style={{ fontSize: 11, color: '#f5d9a8', marginBottom: 6 }}>On These Lines</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {stationLines.map((line) => (
               <div
@@ -141,7 +141,7 @@ export function StationProperties() {
                     boxShadow: `0 0 4px ${line.color}88`,
                   }}
                 />
-                <div style={{ fontSize: 12, color: '#dfe6e9' }}>{line.name}</div>
+                <div style={{ fontSize: 12, color: '#fff8e7' }}>{line.name}</div>
               </div>
             ))}
           </div>
@@ -149,7 +149,7 @@ export function StationProperties() {
       )}
 
       {stationLines.length === 0 && (
-        <div style={{ fontSize: 11, color: '#b2bec3', fontStyle: 'italic' }}>
+        <div style={{ fontSize: 11, color: '#f5d9a8', fontStyle: 'italic' }}>
           Not on any line yet — use the Connect tool to link it!
         </div>
       )}
