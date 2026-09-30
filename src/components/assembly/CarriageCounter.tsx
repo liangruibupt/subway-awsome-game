@@ -16,31 +16,31 @@ export function CarriageCounter() {
   return (
     <div style={{
       padding: '8px 10px',
-      borderTop: '1px solid #1a3a5c44',
+      borderTop: '1px solid #a0521c44',
       flexShrink: 0,
     }}>
       <div style={{
-        fontSize: 9,
+        fontSize: 11,
         fontWeight: 'bold',
         letterSpacing: 1,
-        color: '#dfe6e9',
+        color: '#fff8e7',
         textTransform: 'uppercase',
         marginBottom: 5,
-        fontFamily: 'Courier New, monospace',
+        fontFamily: 'var(--font-ui)',
       }}>
         Train Size
       </div>
 
       {!activeTrain ? (
-        <div style={{ fontSize: 9, color: '#b2bec3', fontStyle: 'italic' }}>
+        <div style={{ fontSize: 11, color: '#f5d9a8', fontStyle: 'italic' }}>
           No train yet — pick a head to start!
         </div>
       ) : atMax ? (
-        <div style={{ fontSize: 9, color: '#ffd93d', fontFamily: 'Courier New, monospace' }}>
+        <div style={{ fontSize: 11, color: '#ffe066', fontFamily: 'var(--font-ui)' }}>
           Maximum reached! (1 Head + 7 Carriages = 8 / 8 Cars)
         </div>
       ) : (
-        <div style={{ fontSize: 10, color: '#81ecec', fontFamily: 'Courier New, monospace' }}>
+        <div style={{ fontSize: 12, color: '#ffcf3f', fontFamily: 'var(--font-ui)' }}>
           1 Head + {carriageCount} Carriages = {totalCars} / {MAX_CARS} Cars
         </div>
       )}
@@ -51,7 +51,7 @@ export function CarriageCounter() {
           <div
             style={{
               width: 14, height: 14,
-              background: '#81ecec',
+              background: '#ffcf3f',
               borderRadius: 3,
               flexShrink: 0,
             }}
@@ -68,7 +68,7 @@ export function CarriageCounter() {
                 style={{
                   width:      isWidebody ? 20 : 14,
                   height:     14,
-                  background: filled ? '#a29bfe' : '#1a3a5c',
+                  background: filled ? '#5c94fc' : '#a0521c',
                   borderRadius: 3,
                   flexShrink: 0,
                   transition: 'background 0.2s, width 0.2s',

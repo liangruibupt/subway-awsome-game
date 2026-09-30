@@ -48,7 +48,7 @@ export function TrainList() {
   return (
     <div style={{
       padding: '10px 8px',
-      borderBottom: '1px solid #1a3a5c',
+      borderBottom: '1px solid #a0521c',
       display: 'flex',
       flexDirection: 'column',
       gap: 6,
@@ -56,12 +56,12 @@ export function TrainList() {
     }}>
       {/* Title */}
       <div style={{
-        fontSize: 9,
+        fontSize: 11,
         fontWeight: 'bold',
         letterSpacing: 1,
-        color: '#81ecec',
+        color: '#ffcf3f',
         textTransform: 'uppercase',
-        fontFamily: 'Courier New, monospace',
+        fontFamily: 'var(--font-ui)',
       }}>
         Your Trains
       </div>
@@ -77,8 +77,8 @@ export function TrainList() {
               onClick={() => handleSelect(index)}
               style={{
                 padding: '6px 8px',
-                background: isActive ? '#1a3a5c55' : '#060e1f',
-                border: isActive ? '1px solid #81ecec' : '1px solid #1a3a5c',
+                background: isActive ? '#a0521c55' : '#3b1e08',
+                border: isActive ? '1px solid #ffcf3f' : '1px solid #a0521c',
                 borderRadius: 4,
                 cursor: 'pointer',
                 transition: 'border-color 0.15s, background 0.15s',
@@ -89,10 +89,10 @@ export function TrainList() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{
-                  fontSize: 10,
+                  fontSize: 12,
                   fontWeight: 'bold',
-                  color: isActive ? '#81ecec' : '#dfe6e9',
-                  fontFamily: 'Courier New, monospace',
+                  color: isActive ? '#ffcf3f' : '#fff8e7',
+                  fontFamily: 'var(--font-ui)',
                 }}>
                   Train {index + 1}
                 </span>
@@ -101,12 +101,12 @@ export function TrainList() {
                     onClick={(e) => handleDelete(e, index)}
                     style={{
                       padding: '1px 5px',
-                      background: '#ff6b6b22',
-                      border: '1px solid #ff6b6b',
+                      background: '#e5252122',
+                      border: '1px solid #e52521',
                       borderRadius: 2,
-                      color: '#ff6b6b',
-                      fontSize: 8,
-                      fontFamily: 'Courier New, monospace',
+                      color: '#e52521',
+                      fontSize: 10,
+                      fontFamily: 'var(--font-ui)',
                       fontWeight: 'bold',
                       cursor: 'pointer',
                       lineHeight: 1.2,
@@ -116,10 +116,10 @@ export function TrainList() {
                   </button>
                 )}
               </div>
-              <div style={{ fontSize: 9, color: '#b2bec3', fontFamily: 'Courier New, monospace' }}>
+              <div style={{ fontSize: 11, color: '#f5d9a8', fontFamily: 'var(--font-ui)' }}>
                 {trainHeadName(train.head)}
               </div>
-              <div style={{ fontSize: 8, color: '#b2bec3', fontFamily: 'Courier New, monospace' }}>
+              <div style={{ fontSize: 10, color: '#f5d9a8', fontFamily: 'var(--font-ui)' }}>
                 1 + {train.carriages.length} = {totalCars} car{totalCars !== 1 ? 's' : ''}
               </div>
             </div>
@@ -130,22 +130,22 @@ export function TrainList() {
         {hasNewSlot && (
           <div style={{
             padding: '6px 8px',
-            background: '#1a3a5c22',
-            border: '1px dashed #81ecec88',
+            background: '#a0521c22',
+            border: '1px dashed #ffcf3f88',
             borderRadius: 4,
           }}>
             <div style={{
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 'bold',
-              color: '#81ecec88',
-              fontFamily: 'Courier New, monospace',
+              color: '#ffcf3f88',
+              fontFamily: 'var(--font-ui)',
             }}>
               Train {trains.length + 1} (new)
             </div>
             <div style={{
-              fontSize: 8,
-              color: '#b2bec388',
-              fontFamily: 'Courier New, monospace',
+              fontSize: 10,
+              color: '#f5d9a888',
+              fontFamily: 'var(--font-ui)',
               marginTop: 2,
             }}>
               Pick a head from the list below
@@ -159,12 +159,12 @@ export function TrainList() {
         onClick={handleNewTrain}
         style={{
           padding: '6px 0',
-          background: '#00b89422',
-          border: '1px solid #00b894',
+          background: '#43b04722',
+          border: '1px solid #43b047',
           borderRadius: 4,
-          color: '#00b894',
-          fontSize: 10,
-          fontFamily: 'Courier New, monospace',
+          color: '#43b047',
+          fontSize: 12,
+          fontFamily: 'var(--font-ui)',
           fontWeight: 'bold',
           cursor: 'pointer',
           width: '100%',
@@ -172,10 +172,10 @@ export function TrainList() {
           letterSpacing: 0.5,
         }}
         onMouseEnter={(e) =>
-          ((e.currentTarget as HTMLButtonElement).style.background = '#00b89444')
+          ((e.currentTarget as HTMLButtonElement).style.background = '#43b04744')
         }
         onMouseLeave={(e) =>
-          ((e.currentTarget as HTMLButtonElement).style.background = '#00b89422')
+          ((e.currentTarget as HTMLButtonElement).style.background = '#43b04722')
         }
       >
         + New Train

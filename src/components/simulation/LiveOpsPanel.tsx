@@ -7,9 +7,9 @@ export function LiveOpsPanel() {
 
   const onTimeRate = stats.onTimeRate;
   const barColor =
-    onTimeRate > 85 ? '#00b894' :
-    onTimeRate >= 70 ? '#ffd93d' :
-    '#ff6b6b';
+    onTimeRate > 85 ? '#43b047' :
+    onTimeRate >= 70 ? '#ffe066' :
+    '#e52521';
 
   return (
     <div style={{ padding: '12px' }}>
@@ -17,9 +17,9 @@ export function LiveOpsPanel() {
       <div style={{
         fontSize: 11,
         fontWeight: 'bold',
-        color: '#81ecec',
+        color: '#ffcf3f',
         letterSpacing: 1,
-        fontFamily: 'Courier New, monospace',
+        fontFamily: 'var(--font-ui)',
         marginBottom: 12,
       }}>
         Live Operations
@@ -27,10 +27,10 @@ export function LiveOpsPanel() {
 
       {/* Total passengers */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 9, color: '#b2bec3', fontFamily: 'Courier New, monospace', marginBottom: 3 }}>
+        <div style={{ fontSize: 11, color: '#f5d9a8', fontFamily: 'var(--font-ui)', marginBottom: 3 }}>
           Total Passengers
         </div>
-        <div style={{ fontSize: 26, fontWeight: 'bold', color: '#dfe6e9', fontFamily: 'Courier New, monospace', lineHeight: 1 }}>
+        <div style={{ fontSize: 26, fontWeight: 'bold', color: '#fff8e7', fontFamily: 'var(--font-ui)', lineHeight: 1 }}>
           {stats.totalPassengers.toLocaleString()}
         </div>
       </div>
@@ -38,14 +38,14 @@ export function LiveOpsPanel() {
       {/* On-time rate */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 9, color: '#b2bec3', fontFamily: 'Courier New, monospace' }}>
+          <span style={{ fontSize: 11, color: '#f5d9a8', fontFamily: 'var(--font-ui)' }}>
             On-Time Rate
           </span>
-          <span style={{ fontSize: 9, fontWeight: 'bold', color: barColor, fontFamily: 'Courier New, monospace' }}>
+          <span style={{ fontSize: 11, fontWeight: 'bold', color: barColor, fontFamily: 'var(--font-ui)' }}>
             {Math.round(onTimeRate)}%
           </span>
         </div>
-        <div style={{ height: 6, background: '#1a3a5c', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ height: 6, background: '#a0521c', borderRadius: 3, overflow: 'hidden' }}>
           <div style={{
             height: '100%',
             width: `${onTimeRate}%`,
@@ -71,8 +71,8 @@ export function LiveOpsPanel() {
                 alignItems: 'center',
                 gap: 8,
                 padding: '6px 8px',
-                background: '#060e1f',
-                border: '1px solid #1a3a5c',
+                background: '#3b1e08',
+                border: '1px solid #a0521c',
                 borderRadius: 4,
               }}
             >
@@ -86,24 +86,24 @@ export function LiveOpsPanel() {
               }} />
 
               {/* Name */}
-              <div style={{ flex: 1, fontSize: 10, color: '#dfe6e9', fontFamily: 'Courier New, monospace' }}>
+              <div style={{ flex: 1, fontSize: 12, color: '#fff8e7', fontFamily: 'var(--font-ui)' }}>
                 {line.name}
               </div>
 
               {/* Status */}
               <div style={{
-                fontSize: 9,
-                color: hasData ? '#00b894' : '#b2bec3',
-                fontFamily: 'Courier New, monospace',
+                fontSize: 11,
+                color: hasData ? '#43b047' : '#f5d9a8',
+                fontFamily: 'var(--font-ui)',
               }}>
                 {hasData ? 'Running' : 'Idle'}
               </div>
 
               {/* Passenger count */}
               <div style={{
-                fontSize: 10,
-                color: '#81ecec',
-                fontFamily: 'Courier New, monospace',
+                fontSize: 12,
+                color: '#ffcf3f',
+                fontFamily: 'var(--font-ui)',
                 minWidth: 28,
                 textAlign: 'right',
               }}>
@@ -114,7 +114,7 @@ export function LiveOpsPanel() {
         })}
 
         {lines.length === 0 && (
-          <div style={{ fontSize: 9, color: '#b2bec3', fontFamily: 'Courier New, monospace', textAlign: 'center', padding: '8px 0' }}>
+          <div style={{ fontSize: 11, color: '#f5d9a8', fontFamily: 'var(--font-ui)', textAlign: 'center', padding: '8px 0' }}>
             No lines yet — build tracks first!
           </div>
         )}

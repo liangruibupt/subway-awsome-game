@@ -55,12 +55,12 @@ export function StationNameDialog({ isOpen, onConfirm, onCancel, position }: Sta
     >
       <div
         style={{
-          background: '#15132b',
-          border: '2px solid #6c5ce7',
+          background: '#3b1e08',
+          border: '2px solid #3a6ee8',
           borderRadius: 12,
           padding: '28px 32px',
           minWidth: 320,
-          boxShadow: '0 8px 40px rgba(108, 92, 231, 0.4)',
+          boxShadow: '0 8px 40px rgba(26, 15, 8, 0.6)',
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
@@ -73,7 +73,7 @@ export function StationNameDialog({ isOpen, onConfirm, onCancel, position }: Sta
               margin: 0,
               fontSize: 20,
               fontWeight: 700,
-              color: '#a29bfe',
+              color: '#5c94fc',
               letterSpacing: 0.5,
             }}
           >
@@ -96,8 +96,8 @@ export function StationNameDialog({ isOpen, onConfirm, onCancel, position }: Sta
         <div
           style={{
             fontSize: 11,
-            color: '#b2bec3',
-            fontFamily: 'monospace',
+            color: '#f5d9a8',
+            fontFamily: 'var(--font-ui)',
           }}
         >
           Grid position: ({position.x}, {position.y})
@@ -110,12 +110,12 @@ export function StationNameDialog({ isOpen, onConfirm, onCancel, position }: Sta
           placeholder="Enter station name..."
           onKeyDown={handleKeyDown}
           style={{
-            background: '#0d0b1e',
-            border: '1.5px solid #6c5ce7',
+            background: '#2a1405',
+            border: '1.5px solid #3a6ee8',
             borderRadius: 8,
             padding: '10px 14px',
             fontSize: 16,
-            color: '#dfe6e9',
+            color: '#fff8e7',
             outline: 'none',
             fontFamily: '"PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif',
             width: '100%',
@@ -130,9 +130,9 @@ export function StationNameDialog({ isOpen, onConfirm, onCancel, position }: Sta
             style={{
               padding: '9px 20px',
               borderRadius: 8,
-              border: '1.5px solid #b2bec3',
+              border: '1.5px solid #f5d9a8',
               background: 'transparent',
-              color: '#b2bec3',
+              color: '#f5d9a8',
               fontSize: 14,
               cursor: 'pointer',
               fontWeight: 600,
@@ -146,12 +146,12 @@ export function StationNameDialog({ isOpen, onConfirm, onCancel, position }: Sta
               padding: '9px 24px',
               borderRadius: 8,
               border: 'none',
-              background: '#00b894',
+              background: '#43b047',
               color: '#ffffff',
               fontSize: 14,
               cursor: 'pointer',
               fontWeight: 700,
-              boxShadow: '0 2px 8px rgba(0, 184, 148, 0.4)',
+              boxShadow: '0 2px 8px rgba(26, 15, 8, 0.6)',
             }}
           >
             Confirm

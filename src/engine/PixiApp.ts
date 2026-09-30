@@ -14,10 +14,25 @@ export class PixiApp {
   }
 
   private async _init(canvas: HTMLCanvasElement) {
+    // Pixi Text rasterises with whatever font is ready, so wait (briefly) for
+    // the pixel web fonts before the first labels are drawn.
+    try {
+      if (typeof document !== 'undefined' && document.fonts?.load) {
+        await Promise.race([
+          Promise.all([
+            document.fonts.load('12px "Press Start 2P"'),
+            document.fonts.load('700 12px "Pixelify Sans"'),
+          ]),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ]);
+      }
+    } catch {
+      /* fonts are cosmetic — fall back silently */
+    }
     await this.app.init({
       canvas,
       resizeTo: canvas.parentElement!,
-      backgroundColor: 0x0a1628,
+      backgroundColor: 0x7ccd4c,
       antialias: true,
     });
     this.app.stage.addChild(this.worldContainer);

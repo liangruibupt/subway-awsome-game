@@ -5,13 +5,13 @@ import { useUIStore } from '../../stores/uiStore';
 import { CHALLENGE_LEVELS } from '../../data/challengeLevels';
 import type { ObjectiveType } from '../../data/challengeLevels';
 
-function ProgressBar({ value, max, color = '#81ecec' }: { value: number; max: number; color?: string }) {
+function ProgressBar({ value, max, color = '#ffcf3f' }: { value: number; max: number; color?: string }) {
   const pct = Math.min(100, max > 0 ? (value / max) * 100 : 0);
   return (
     <div
       style={{
         height: 6,
-        background: '#1a3a5c',
+        background: '#a0521c',
         borderRadius: 3,
         overflow: 'hidden',
         marginTop: 3,
@@ -21,7 +21,7 @@ function ProgressBar({ value, max, color = '#81ecec' }: { value: number; max: nu
         style={{
           height: '100%',
           width: `${pct}%`,
-          background: pct >= 100 ? '#00b894' : color,
+          background: pct >= 100 ? '#43b047' : color,
           borderRadius: 3,
           transition: 'width 0.3s ease',
         }}
@@ -80,8 +80,8 @@ export function ObjectiveTracker() {
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 50,
-        background: 'rgba(13,31,60,0.92)',
-        border: '1px solid #1e4976',
+        background: 'rgba(92,46,14,0.95)',
+        border: '1px solid #b5651d',
         borderRadius: 10,
         padding: '12px 18px',
         minWidth: 260,
@@ -92,10 +92,10 @@ export function ObjectiveTracker() {
       {/* Level name */}
       <div
         style={{
-          fontFamily: "'Courier New', monospace",
+          fontFamily: 'var(--font-ui)',
           fontSize: 11,
           fontWeight: 'bold',
-          color: '#81ecec',
+          color: '#ffcf3f',
           letterSpacing: 2,
           marginBottom: 10,
           textTransform: 'uppercase',
@@ -117,18 +117,18 @@ export function ObjectiveTracker() {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   fontSize: 12,
-                  color: met ? '#00b894' : '#dfe6e9',
+                  color: met ? '#43b047' : '#fff8e7',
                 }}
               >
                 <span>{obj.label}</span>
-                <span style={{ fontFamily: "'Courier New', monospace", fontSize: 11, color: met ? '#00b894' : '#81ecec' }}>
+                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: met ? '#43b047' : '#ffcf3f' }}>
                   {formatValue(obj.type, current)} / {formatValue(obj.type, obj.target)}
                 </span>
               </div>
               <ProgressBar
                 value={current}
                 max={obj.target}
-                color={met ? '#00b894' : '#81ecec'}
+                color={met ? '#43b047' : '#ffcf3f'}
               />
             </div>
           );

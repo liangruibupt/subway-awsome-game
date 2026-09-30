@@ -3,6 +3,7 @@ import { useTrainStore } from '../stores/trainStore';
 import { useUIStore } from '../stores/uiStore';
 import type { TrainHead, Carriage, TrainStyle } from '../types';
 import type { PixiApp } from './PixiApp';
+import { PAL, LABEL_FONT, drawSky, drawCloud, drawHill, drawBush, drawGroundStrip, drawQuestionBlock, drawBrickBlock, drawPipeSide } from './MarioArt';
 
 // ─── Color utilities ──────────────────────────────────────────────────────────
 
@@ -93,6 +94,8 @@ export class AssemblyRenderer {
   private pixiApp: PixiApp;
   private scene!: Container;
   private platformGraphics!: Graphics;
+  private backdrop!: Graphics;
+  private backdropKey = '';
   private trainContainer!: Container;
   private angleLabelText!: Text;
 
@@ -115,10 +118,13 @@ export class AssemblyRenderer {
 
   init() {
     const app = this.pixiApp.app;
-    app.renderer.background.color = 0x1a1a2e;
+    app.renderer.background.color = PAL.sky;
 
     this.scene = new Container();
     app.stage.addChild(this.scene);
+
+    this.backdrop = new Graphics();
+    this.scene.addChild(this.backdrop);
 
     this.platformGraphics = new Graphics();
     this.scene.addChild(this.platformGraphics);
@@ -128,7 +134,7 @@ export class AssemblyRenderer {
 
     this.angleLabelText = new Text({
       text: 'Front View',
-      style: { fontFamily: 'monospace', fontSize: 14, fill: '#a29bfe' },
+      style: { fontFamily: LABEL_FONT, fontSize: 16, fill: '#ffffff', fontWeight: '700', stroke: { color: PAL.outline, width: 3 } },
     });
     this.scene.addChild(this.angleLabelText);
 
@@ -189,7 +195,7 @@ export class AssemblyRenderer {
       this.clearTrainContainer();
       const text = new Text({
         text: 'Pick a head from the left to start!',
-        style: { fontFamily: 'monospace', fontSize: 14, fill: '#b2bec3' },
+        style: { fontFamily: LABEL_FONT, fontSize: 16, fill: '#fff1c8', fontWeight: '700', stroke: { color: PAL.outline, width: 3 } },
       });
       text.anchor.set(0.5, 0.5);
       text.x = 0;
@@ -404,7 +410,7 @@ export class AssemblyRenderer {
   private addHeadLabels(cx: number, baseY: number, head: TrainHead) {
     const label = new Text({
       text: head.city.charAt(0).toUpperCase() + head.city.slice(1),
-      style: { fontFamily: 'monospace', fontSize: 11, fill: '#dfe6e9', fontWeight: 'bold' },
+      style: { fontFamily: LABEL_FONT, fontSize: 13, fill: '#ffffff', fontWeight: '700', stroke: { color: PAL.outline, width: 3 } },
     });
     label.anchor.set(0.5, 0);
     label.x = cx;
@@ -413,7 +419,7 @@ export class AssemblyRenderer {
 
     const eraLabel = new Text({
       text: head.era.toUpperCase(),
-      style: { fontFamily: 'monospace', fontSize: 8, fill: '#b2bec3' },
+      style: { fontFamily: LABEL_FONT, fontSize: 10, fill: '#fff1c8', fontWeight: '700', stroke: { color: PAL.outline, width: 3 } },
     });
     eraLabel.anchor.set(0.5, 0);
     eraLabel.x = cx;
@@ -430,12 +436,20 @@ export class AssemblyRenderer {
     const rx = 230;
     const ry = 46;
 
+    this.drawBackdrop(Math.round(cy + ry * 0.2));
+
     const g = this.platformGraphics;
     g.clear();
 
-    g.ellipse(cx, cy + 3, rx * 0.88, ry * 0.55).fill({ color: 0x0d0d1f, alpha: 0.45 });
-    g.ellipse(cx, cy, rx, ry).fill({ color: 0x6c5ce7, alpha: 0.15 });
-    g.ellipse(cx, cy, rx, ry).stroke({ color: 0x6c5ce7, width: 1.5, alpha: 0.8 });
+    // Turntable = a giant red-and-white mushroom-cap disc
+    g.ellipse(cx, cy + 14, rx + 4, ry + 4).fill({ color: PAL.outline });
+    g.ellipse(cx, cy + 10, rx, ry).fill({ color: PAL.redDark });
+    g.ellipse(cx, cy, rx + 4, ry + 4).fill({ color: PAL.outline });
+    g.ellipse(cx, cy, rx, ry).fill({ color: PAL.red });
+    for (const [ox, oy, sr] of [[-0.6, -0.1, 0.13], [0.55, 0.05, 0.15], [0, -0.45, 0.11], [-0.2, 0.45, 0.1], [0.3, -0.5, 0.08]]) {
+      g.ellipse(cx + ox * rx, cy + oy * ry, rx * sr, ry * sr * 1.3).fill({ color: PAL.white });
+    }
+    g.ellipse(cx - rx * 0.35, cy - ry * 0.55, rx * 0.25, ry * 0.12).fill({ color: 0xff8a7a, alpha: 0.7 });
 
     const irx  = rx * 0.72;
     const iry  = ry * 0.72;
@@ -448,7 +462,7 @@ export class AssemblyRenderer {
         const y1 = cy + iry * Math.sin(a1);
         const x2 = cx + irx * Math.cos(a2);
         const y2 = cy + iry * Math.sin(a2);
-        g.moveTo(x1, y1).lineTo(x2, y2).stroke({ color: 0x6c5ce7, width: 1, alpha: 0.35 });
+        g.moveTo(x1, y1).lineTo(x2, y2).stroke({ color: PAL.white, width: 2, alpha: 0.35 });
       }
     }
 
@@ -475,7 +489,10 @@ export class AssemblyRenderer {
     const trains = useTrainStore.getState().trains;
     const activeTrainIndex = useUIStore.getState().activeTrainIndex;
     const train = trains[activeTrainIndex];
-    if (!train) return;
+    if (!train) {
+      this.drawBackdrop(Math.round(H / 2 + SIDE_STD_H / 2) + 12);
+      return;
+    }
     const selectedIdx = useUIStore.getState().selectedCarriageIndex;
 
     const numFilled = train.carriages.length;
@@ -486,6 +503,7 @@ export class AssemblyRenderer {
     const startX = Math.round((W - totalW) / 2);
     // Bottom edge of all cars (widebody will extend upward more)
     const baseY  = Math.round(H / 2 + SIDE_STD_H / 2);
+    this.drawBackdrop(baseY + 12);
 
     this.carriageRegions = [];
     let x = startX;
@@ -612,7 +630,7 @@ export class AssemblyRenderer {
     if (carriage.type === 'widebody') {
       const xlLabel = new Text({
         text: 'XL',
-        style: { fontFamily: 'monospace', fontSize: 9, fill: '#dfe6e9' },
+        style: { fontFamily: LABEL_FONT, fontSize: 11, fill: '#ffffff', fontWeight: '700', stroke: { color: PAL.outline, width: 3 } },
       });
       xlLabel.x = x + W - 18;
       xlLabel.y = topY + 3;
@@ -630,16 +648,16 @@ export class AssemblyRenderer {
     const topY = baseY - H;
 
     const g = new Graphics();
-    g.roundRect(x, topY, W, H, 3).fill({ color: 0x6c5ce7, alpha: 0.05 });
-    g.roundRect(x, topY, W, H, 3).stroke({ color: 0x6c5ce7, width: 1.5, alpha: 0.5 });
+    g.roundRect(x, topY, W, H, 6).fill({ color: PAL.white, alpha: 0.28 });
+    g.roundRect(x, topY, W, H, 6).stroke({ color: PAL.outline, width: 2.5, alpha: 0.55 });
     this.trainContainer.addChild(g);
 
     const plus = new Text({
       text: '+',
-      style: { fontFamily: 'monospace', fontSize: 26, fill: '#6c5ce7' },
+      style: { fontFamily: '"Press Start 2P", monospace', fontSize: 20, fill: PAL.white, stroke: { color: PAL.outline, width: 4 } },
     });
     plus.anchor.set(0.5, 0.5);
-    plus.alpha = 0.65;
+    plus.alpha = 0.9;
     plus.x = x + W / 2;
     plus.y = topY + H / 2;
     this.trainContainer.addChild(plus);
@@ -800,7 +818,7 @@ export class AssemblyRenderer {
     // City name label below the head
     const label = new Text({
       text: head.city.charAt(0).toUpperCase() + head.city.slice(1),
-      style: { fontFamily: 'monospace', fontSize: 11, fill: '#dfe6e9', fontWeight: 'bold' },
+      style: { fontFamily: LABEL_FONT, fontSize: 13, fill: '#ffffff', fontWeight: '700', stroke: { color: PAL.outline, width: 3 } },
     });
     label.anchor.set(0.5, 0);
     label.x = px + ISO_CAR_W / 2;
@@ -810,7 +828,7 @@ export class AssemblyRenderer {
     // Era tag
     const eraLabel = new Text({
       text: head.era.toUpperCase(),
-      style: { fontFamily: 'monospace', fontSize: 8, fill: '#b2bec3' },
+      style: { fontFamily: LABEL_FONT, fontSize: 10, fill: '#fff1c8', fontWeight: '700', stroke: { color: PAL.outline, width: 3 } },
     });
     eraLabel.anchor.set(0.5, 0);
     eraLabel.x = px + ISO_CAR_W / 2;
@@ -837,6 +855,47 @@ export class AssemblyRenderer {
   private updateAngleLabel() {
     this.angleLabelText.text = this.getViewLabel();
     this.positionAngleLabel();
+  }
+
+  /** Sunny side-scroller backdrop: sky, clouds, hills, bushes, blocks and ground. Cached per size. */
+  private drawBackdrop(groundY: number) {
+    const app = this.pixiApp.app;
+    const W = app.screen.width;
+    const H = app.screen.height;
+    const key = `${W}x${H}@${groundY}`;
+    if (key === this.backdropKey) return;
+    this.backdropKey = key;
+
+    const g = this.backdrop;
+    g.clear();
+    drawSky(g, 0, 0, W, groundY);
+
+    // Clouds
+    const clouds: [number, number, number][] = [[0.12, 0.14, 1.1], [0.42, 0.08, 0.8], [0.7, 0.18, 1.2], [0.92, 0.1, 0.9]];
+    for (const [fx, fy, sc] of clouds) drawCloud(g, fx * W, fy * H + 30, sc);
+
+    // Floating blocks row (upper left) and a pipe (right), classic level dressing
+    const bs = 28;
+    const by = Math.max(70, groundY - 190);
+    const bx = W * 0.14;
+    drawBrickBlock(g, bx, by, bs);
+    drawQuestionBlock(g, bx + bs, by, bs);
+    drawBrickBlock(g, bx + bs * 2, by, bs);
+    drawQuestionBlock(g, bx + bs * 3, by, bs);
+    drawBrickBlock(g, bx + bs * 4, by, bs);
+    drawQuestionBlock(g, W * 0.8, by - 40, bs);
+
+    // Hills + bushes on the horizon
+    drawHill(g, W * 0.1, groundY - 6, 240, 110);
+    drawHill(g, W * 0.3, groundY - 6, 140, 60, 0x4cbf4c);
+    drawHill(g, W * 0.78, groundY - 6, 200, 90, 0x4cbf4c);
+    for (const fx of [0.22, 0.55, 0.66, 0.9]) {
+      drawBush(g, W * fx - 10, groundY - 14, 1.3);
+      drawBush(g, W * fx + 14, groundY - 14, 1.3);
+    }
+    drawPipeSide(g, W - 110, groundY - 4, 64, 96);
+
+    drawGroundStrip(g, 0, groundY, W, H - groundY + 40);
   }
 
   private positionAngleLabel() {

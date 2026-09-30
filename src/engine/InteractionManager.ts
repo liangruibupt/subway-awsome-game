@@ -413,7 +413,12 @@ export class InteractionManager {
       for (let i = 1; i < path.length; i++) {
         this.editHandlesGraphics.lineTo(path[i].x * GRID_SIZE, path[i].y * GRID_SIZE);
       }
-      this.editHandlesGraphics.stroke({ color: '#00ffff', width: 2, alpha: 0.6 });
+      this.editHandlesGraphics.stroke({ color: '#1a0f08', width: 5, alpha: 0.5, cap: 'round', join: 'round' });
+      this.editHandlesGraphics.moveTo(path[0].x * GRID_SIZE, path[0].y * GRID_SIZE);
+      for (let i = 1; i < path.length; i++) {
+        this.editHandlesGraphics.lineTo(path[i].x * GRID_SIZE, path[i].y * GRID_SIZE);
+      }
+      this.editHandlesGraphics.stroke({ color: '#ffffff', width: 2.5, alpha: 0.9, cap: 'round', join: 'round' });
     }
 
     // Draw a handle circle at each waypoint
@@ -422,8 +427,8 @@ export class InteractionManager {
       const py = path[i].y * GRID_SIZE;
       const isActive = i === this.editDragWaypointIdx;
       // Active (dragging) handle: gold; resting handles: cyan
-      const color = isActive ? '#ffd700' : '#00ffff';
-      this.editHandlesGraphics.circle(px, py, 5).fill({ color, alpha: 1 });
+      const color = isActive ? '#fcbc3c' : '#ffffff';
+      this.editHandlesGraphics.circle(px, py, 6).fill({ color, alpha: 1 }).stroke({ color: '#1a0f08', width: 2 });
     }
   }
 
@@ -516,7 +521,23 @@ export class InteractionManager {
     }
 
     if (totalLen > 0) {
-      this.previewGraphics.stroke({ color, width: 2, alpha: 0.7 });
+      this.previewGraphics.stroke({ color: '#1a0f08', width: 7, alpha: 0.6, cap: 'round' });
+      this.redrawDashes(x1, y1, dx, dy, totalLen, dashLen, gapLen);
+      this.previewGraphics.stroke({ color, width: 4, alpha: 1, cap: 'round' });
+    }
+  }
+
+  /** Re-trace the same dash pattern (used for the coloured pass over the outline). */
+  private redrawDashes(x1: number, y1: number, dx: number, dy: number, totalLen: number, dashLen: number, gapLen: number) {
+    let traveled = 0;
+    let drawing = true;
+    while (traveled < totalLen) {
+      const end = Math.min(traveled + (drawing ? dashLen : gapLen), totalLen);
+      if (drawing) {
+        this.previewGraphics.moveTo(x1 + dx * traveled, y1 + dy * traveled).lineTo(x1 + dx * end, y1 + dy * end);
+      }
+      traveled = end;
+      drawing = !drawing;
     }
   }
 

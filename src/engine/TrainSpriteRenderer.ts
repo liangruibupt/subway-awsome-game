@@ -3,12 +3,13 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { PixiApp } from './PixiApp';
 import type { SimulationEngine, TrainRunState } from './SimulationEngine';
+import { PAL, PIXEL_FONT, drawCoin, toColorNum, shade } from './MarioArt';
 
 const GRID_SIZE = 30;
-const HEAD_W = 30;
-const HEAD_H = 10;
-const CARRIAGE_W = 20;
-const CARRIAGE_H = 10;
+const HEAD_W = 32;
+const HEAD_H = 14;
+const CARRIAGE_W = 22;
+const CARRIAGE_H = 14;
 const TRAIL_LENGTH = 20;
 
 interface PathPosition {
@@ -54,6 +55,7 @@ export class TrainSpriteRenderer {
 
   private prevWaiting = new Map<string, number>();
   private prevTrainPax = new Map<string, number>();
+  private clock = 0;
   private boardingAnims: { sx: number; sy: number; tx: number; ty: number; t: number }[] = [];
   private alightingAnims: { sx: number; sy: number; tx: number; ty: number; t: number }[] = [];
 
@@ -80,6 +82,7 @@ export class TrainSpriteRenderer {
     for (const child of removed) child.destroy({ children: true });
 
     const trainStates = this.engine.getAllTrainStates();
+    this.clock += deltaSeconds > 0 ? deltaSeconds : 1 / 60;
 
     for (const state of trainStates) {
       const px = state.worldX * GRID_SIZE;
@@ -176,13 +179,14 @@ export class TrainSpriteRenderer {
     const animG = new Graphics();
     for (const anim of this.boardingAnims) {
       const x = anim.sx + (anim.tx - anim.sx) * anim.t;
-      const y = anim.sy + (anim.ty - anim.sy) * anim.t;
-      animG.circle(x, y, 3).fill({ color: 0xffd93d, alpha: 1 - anim.t });
+      // Coins hop along a little arc, like popping out of a block
+      const y = anim.sy + (anim.ty - anim.sy) * anim.t - Math.sin(anim.t * Math.PI) * 18;
+      drawCoin(animG, x, y, 4, Math.abs(Math.cos(anim.t * Math.PI * 3)), 1 - anim.t * 0.6);
     }
     for (const anim of this.alightingAnims) {
       const x = anim.tx + (anim.sx - anim.tx) * anim.t; // train→station
-      const y = anim.ty + (anim.sy - anim.ty) * anim.t;
-      animG.circle(x, y, 3).fill({ color: 0xffd93d, alpha: anim.t });
+      const y = anim.ty + (anim.sy - anim.ty) * anim.t - Math.sin(anim.t * Math.PI) * 18;
+      drawCoin(animG, x, y, 4, Math.abs(Math.cos(anim.t * Math.PI * 3)), 0.4 + anim.t * 0.6);
     }
     this.container.addChild(animG);
 
@@ -263,13 +267,16 @@ export class TrainSpriteRenderer {
 
     const g = new Graphics();
 
-    // ── Motion trail (fading polyline) ──────────────────────────────────────
-    if (trail.length >= 2) {
-      for (let i = 1; i < trail.length; i++) {
-        const alpha = (i / trail.length) * 0.4;
-        g.moveTo(trail[i - 1].x, trail[i - 1].y);
-        g.lineTo(trail[i].x, trail[i].y);
-        g.stroke({ color: colorStr, width: 3, alpha });
+    // ── Motion trail: little dust puffs behind a running train ──────────────
+    if (state.status === 'running' && trail.length >= 2) {
+      const tailIdx = Math.max(0, trail.length - 1 - Math.min(trail.length - 1, 4 + carriageCount * 2));
+      for (let i = 0; i < 3; i++) {
+        const ti = Math.max(0, tailIdx - i * 3);
+        const p = trail[ti];
+        const age = (i + 1) / 3;
+        const r = 2.5 + age * 3;
+        g.circle(p.x, p.y, r + 1.2).fill({ color: PAL.outline, alpha: 0.35 * (1 - age * 0.6) });
+        g.circle(p.x, p.y, r).fill({ color: PAL.white, alpha: 0.9 * (1 - age * 0.6) });
       }
     }
 
@@ -285,7 +292,8 @@ export class TrainSpriteRenderer {
           const pulseT = this.pulseTimers.get(state.id) ?? 0;
           const pulseR = 14 + Math.sin(pulseT * Math.PI * 2) * 4;
           const pulseAlpha = 0.25 + Math.abs(Math.sin(pulseT * Math.PI * 2)) * 0.2;
-          g.circle(sx, sy, pulseR).stroke({ color: colorStr, width: 2, alpha: pulseAlpha });
+          g.circle(sx, sy, pulseR + 4).stroke({ color: PAL.outline, width: 4, alpha: pulseAlpha + 0.2 });
+          g.circle(sx, sy, pulseR + 4).stroke({ color: PAL.white, width: 2, alpha: pulseAlpha + 0.4 });
         }
       }
     }
@@ -294,7 +302,31 @@ export class TrainSpriteRenderer {
     const [headRW, headRH] = isVertical ? [HEAD_H, HEAD_W] : [HEAD_W, HEAD_H];
     const hw = headRW / 2;
     const hh = headRH / 2;
-    g.roundRect(px - hw, py - hh, headRW, headRH, 3).fill({ color: headColor, alpha: 1 });
+    // Small bob so the train feels alive
+    const bob = state.status === 'running' ? Math.round(Math.sin(this.clock * 18) * 0.8) : 0;
+    const headC = toColorNum(headColor);
+    g.roundRect(px - hw + 2, py - hh + 3, headRW, headRH, 5).fill({ color: 0x000000, alpha: 0.25 });
+    g.roundRect(px - hw, py - hh + bob, headRW, headRH, 5)
+      .fill({ color: headC })
+      .stroke({ color: PAL.outline, width: 2.5 });
+    // Shine stripe along the top/left edge
+    if (isVertical) {
+      g.rect(px - hw + 2.5, py - hh + 4 + bob, 2.5, headRH - 8).fill({ color: shade(headC, 1.5), alpha: 0.9 });
+    } else {
+      g.rect(px - hw + 4, py - hh + 2.5 + bob, headRW - 8, 2.5).fill({ color: shade(headC, 1.5), alpha: 0.9 });
+    }
+    // Windshield at the front end + headlight
+    {
+      const ws = 6;
+      const fx = px + dirX * (hw - ws / 2 - 3);
+      const fy = py + dirY * (hh - ws / 2 - 3) + bob;
+      const [ww, wh] = isVertical ? [headRW - 6, ws] : [ws, headRH - 6];
+      g.roundRect(fx - ww / 2, fy - wh / 2, ww, wh, 2).fill({ color: 0x1e3a6e }).stroke({ color: PAL.outline, width: 1.5 });
+      g.rect(fx - ww / 2 + 1, fy - wh / 2 + 1, Math.max(1, ww / 3), Math.max(1, wh / 3)).fill({ color: 0x9ad6ff });
+      const lx = px + dirX * (hw + 1);
+      const ly = py + dirY * (hh + 1) + bob;
+      g.circle(lx, ly, 2.8).fill({ color: PAL.coinLight }).stroke({ color: PAL.outline, width: 1.2 });
+    }
 
     // ── Carriages: trail-based positioning ──────────────────────────────────
     // Each carriage is placed at an earlier position in the movement trail.
@@ -348,8 +380,18 @@ export class TrainSpriteRenderer {
 
         const [cw, ch] = cIsVert ? [CARRIAGE_H, CARRIAGE_W] : [CARRIAGE_W, CARRIAGE_H];
         const carriageColor = styles?.carriageColors[i] ?? colorStr;
-        g.roundRect(cpx - cw / 2, cpy - ch / 2, cw, ch, 2)
-          .fill({ color: carriageColor, alpha: 0.85 });
+        const cc = toColorNum(carriageColor);
+        g.roundRect(cpx - cw / 2 + 2, cpy - ch / 2 + 3, cw, ch, 4).fill({ color: 0x000000, alpha: 0.22 });
+        g.roundRect(cpx - cw / 2, cpy - ch / 2, cw, ch, 4)
+          .fill({ color: cc })
+          .stroke({ color: PAL.outline, width: 2.5 });
+        // Two windows along the car
+        const along = cIsVert ? [0, 1] : [1, 0];
+        for (const k of [-1, 1]) {
+          const wx = cpx + along[0] * k * (CARRIAGE_W / 4);
+          const wy = cpy + along[1] * k * (CARRIAGE_W / 4);
+          g.rect(wx - 2.5, wy - 2.5, 5, 5).fill({ color: 0xfff6c0 }).stroke({ color: PAL.outline, width: 1 });
+        }
       }
     }
 
@@ -369,7 +411,12 @@ export class TrainSpriteRenderer {
     g.lineTo(leftX, leftY);
     g.lineTo(rightX, rightY);
     g.closePath();
-    g.fill({ color: 0xffffff, alpha: 0.8 });
+    g.fill({ color: PAL.white, alpha: 0.95 });
+    g.moveTo(tipX, tipY);
+    g.lineTo(leftX, leftY);
+    g.lineTo(rightX, rightY);
+    g.closePath();
+    g.stroke({ color: PAL.outline, width: 1.5 });
 
     trainContainer.addChild(g);
 
@@ -384,7 +431,7 @@ export class TrainSpriteRenderer {
         const r = 12 - phase * 8;
         const dotX = px + Math.cos(angle) * r;
         const dotY = py + Math.sin(angle) * r - 8;
-        dotG.circle(dotX, dotY, 2).fill({ color: 0xffd93d, alpha: 0.9 - phase * 0.5 });
+        drawCoin(dotG, dotX, dotY - 4, 3, Math.abs(Math.cos(animT * 6 + i)), 0.95 - phase * 0.5);
       }
       trainContainer.addChild(dotG);
     }
@@ -392,18 +439,19 @@ export class TrainSpriteRenderer {
     // ── Status label when stopped or loading ─────────────────────────────────
     if (state.status !== 'running') {
       const labelText = state.status === 'loading' ? 'LOADING' : 'STOPPED';
-      const labelColor = state.status === 'loading' ? '#81ecec' : '#ffd93d';
+      const labelColor = state.status === 'loading' ? PAL.coin : PAL.white;
       const label = new Text({
         text: labelText,
         style: {
-          fontFamily: 'Courier New, monospace',
-          fontSize: 8,
+          fontFamily: PIXEL_FONT,
+          fontSize: 7,
           fill: labelColor,
+          stroke: { color: PAL.outline, width: 3 },
         },
       });
       label.anchor.set(0.5, 1);
       label.x = px;
-      label.y = py - 18;
+      label.y = py - 22;
       trainContainer.addChild(label);
     }
 
@@ -412,28 +460,33 @@ export class TrainSpriteRenderer {
 
   private renderWaitingDots(sx: number, sy: number, count: number): void {
     const g = new Graphics();
-    const startY = sy + 16;
+    // Waiting passengers = a row of spinning coins to the right of the station
+    const startX = sx + 22;
+    const startY = sy - 8;
     const visibleCount = Math.min(count, 10);
     for (let i = 0; i < visibleCount; i++) {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const x = sx - 4 + col * 8;
-      const y = startY + row * 8;
-      g.circle(x, y, 3).fill({ color: 0xffd93d, alpha: 1 });
+      const col = i % 5;
+      const row = Math.floor(i / 5);
+      const x = startX + col * 9;
+      const y = startY + row * 11;
+      const spin = Math.abs(Math.cos(this.clock * 3 + i * 0.6));
+      drawCoin(g, x, y, 3.8, spin);
     }
     this.container.addChild(g);
     if (count > 10) {
       const label = new Text({
         text: String(count),
         style: {
-          fontFamily: 'Courier New, monospace',
-          fontSize: 8,
-          fill: '#ffffff',
+          fontFamily: PIXEL_FONT,
+          fontSize: 7,
+          fill: PAL.white,
+          stroke: { color: PAL.outline, width: 3 },
         },
       });
-      label.anchor.set(0.5, 0);
-      label.x = sx;
-      label.y = startY + Math.ceil(visibleCount / 2) * 8;
+      label.text = `x${count}`;
+      label.anchor.set(0, 0.5);
+      label.x = startX + 5 * 9 - 2;
+      label.y = startY;
       this.container.addChild(label);
     }
   }

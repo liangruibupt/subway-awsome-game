@@ -50,18 +50,18 @@ export function LeftToolBar() {
           gap: 4,
         }}>
           <div style={{
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: 'bold',
-            color: '#81ecec',
-            fontFamily: 'Courier New, monospace',
+            color: '#ffcf3f',
+            fontFamily: 'var(--font-ui)',
             letterSpacing: 1,
           }}>
             Simulation
           </div>
           <div style={{
-            fontSize: 8,
-            color: '#b2bec3',
-            fontFamily: 'Courier New, monospace',
+            fontSize: 10,
+            color: '#f5d9a8',
+            fontFamily: 'var(--font-ui)',
             textAlign: 'center',
             lineHeight: 1.4,
           }}>

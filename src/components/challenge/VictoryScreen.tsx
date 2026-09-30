@@ -12,8 +12,8 @@ function StarDisplay({ stars, total = 3 }: { stars: number; total?: number }) {
           key={i}
           style={{
             fontSize: 36,
-            color: i < stars ? '#ffd93d' : '#2d4a6e',
-            textShadow: i < stars ? '0 0 12px #ffd93daa' : 'none',
+            color: i < stars ? '#ffe066' : '#c47a2c',
+            textShadow: i < stars ? '0 0 12px #ffe066aa' : 'none',
             transition: 'color 0.3s',
           }}
         >
@@ -118,7 +118,7 @@ export function VictoryScreen() {
       style={{
         position: 'absolute',
         inset: 0,
-        background: 'rgba(6,14,31,0.90)',
+        background: 'rgba(26,15,8,0.75)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -128,8 +128,8 @@ export function VictoryScreen() {
       {/* Modal */}
       <div
         style={{
-          background: '#0d1f3c',
-          border: '2px solid #ffd93d44',
+          background: '#5c2e0e',
+          border: '2px solid #ffe06644',
           borderRadius: 14,
           padding: '32px 28px',
           width: 340,
@@ -143,18 +143,18 @@ export function VictoryScreen() {
         <div>
           <div
             style={{
-              fontFamily: "'Courier New', monospace",
+              fontFamily: 'var(--font-ui)',
               fontSize: 20,
               fontWeight: 'bold',
-              color: '#ffd93d',
+              color: '#ffe066',
               letterSpacing: 3,
-              textShadow: '0 0 12px #ffd93d88',
+              textShadow: '0 0 12px #ffe06688',
               marginBottom: 4,
             }}
           >
             CHALLENGE COMPLETE!
           </div>
-          <div style={{ color: '#b2bec3', fontSize: 13 }}>
+          <div style={{ color: '#f5d9a8', fontSize: 13 }}>
             Great job, subway builder!
           </div>
         </div>
@@ -162,7 +162,7 @@ export function VictoryScreen() {
         {/* Stars */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <StarDisplay stars={stars} />
-          <div style={{ color: '#b2bec3', fontSize: 12 }}>
+          <div style={{ color: '#f5d9a8', fontSize: 12 }}>
             {stars === 3 ? 'Perfect run — 3 stars!' : stars === 2 ? 'Solid work — 2 stars!' : 'You did it — 1 star!'}
           </div>
         </div>
@@ -170,11 +170,11 @@ export function VictoryScreen() {
         {/* Unlock message */}
         <div
           style={{
-            background: '#112240',
-            border: '1px solid #1e4976',
+            background: '#6b3812',
+            border: '1px solid #b5651d',
             borderRadius: 6,
             padding: '10px 14px',
-            color: '#81ecec',
+            color: '#ffcf3f',
             fontSize: 12,
             lineHeight: 1.5,
           }}
@@ -188,20 +188,20 @@ export function VictoryScreen() {
             <button
               onClick={handleNextLevel}
               style={{
-                background: '#a29bfe',
+                background: '#5c94fc',
                 border: 'none',
                 borderRadius: 6,
                 padding: '10px 0',
                 color: '#fff',
-                fontFamily: "'Courier New', monospace",
+                fontFamily: 'var(--font-ui)',
                 fontWeight: 'bold',
                 fontSize: 12,
                 letterSpacing: 2,
                 cursor: 'pointer',
                 transition: 'background 0.15s',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#b8b0ff')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = '#a29bfe')}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#8fb4ff')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#5c94fc')}
             >
               NEXT LEVEL
             </button>
@@ -210,20 +210,20 @@ export function VictoryScreen() {
           <button
             onClick={handleReplay}
             style={{
-              background: '#00b894',
+              background: '#43b047',
               border: 'none',
               borderRadius: 6,
               padding: '10px 0',
               color: '#fff',
-              fontFamily: "'Courier New', monospace",
+              fontFamily: 'var(--font-ui)',
               fontWeight: 'bold',
               fontSize: 12,
               letterSpacing: 2,
               cursor: 'pointer',
               transition: 'background 0.15s',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#00d1a7')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#00b894')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#5cc85c')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#43b047')}
           >
             REPLAY
           </button>
@@ -232,23 +232,23 @@ export function VictoryScreen() {
             onClick={handleBackToSandbox}
             style={{
               background: 'transparent',
-              border: '1px solid #1a3a5c',
+              border: '1px solid #a0521c',
               borderRadius: 6,
               padding: '10px 0',
-              color: '#b2bec3',
-              fontFamily: "'Courier New', monospace",
+              color: '#f5d9a8',
+              fontFamily: 'var(--font-ui)',
               fontSize: 12,
               letterSpacing: 2,
               cursor: 'pointer',
               transition: 'color 0.15s, border-color 0.15s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#dfe6e9';
-              e.currentTarget.style.borderColor = '#3d6e9c';
+              e.currentTarget.style.color = '#fff8e7';
+              e.currentTarget.style.borderColor = '#d8903a';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#b2bec3';
-              e.currentTarget.style.borderColor = '#1a3a5c';
+              e.currentTarget.style.color = '#f5d9a8';
+              e.currentTarget.style.borderColor = '#a0521c';
             }}
           >
             BACK TO SANDBOX
