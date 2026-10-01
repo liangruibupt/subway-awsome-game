@@ -4,9 +4,19 @@ A web-based subway building game where players design track networks, build and 
 
 Live demo: **https://d1tmob3bfp3y6g.cloudfront.net/** (S3 + CloudFront; sign-in required, accounts are issued by the owner).
 
+## Screenshots
+
+**Run mode**: two lines, an interchange at Central, and a branched Blue Line. Trains stop at every station and take each branch in turn.
+
+![Run mode: Red and Blue lines with trains running on a grass map](docs/screenshots/run.png)
+
+**Train assembly**: pick a head and add carriages on the turntable.
+
+![Train assembly: a Tokyo Modern metro head on the mushroom turntable](docs/screenshots/assembly.png)
+
 ## Features
 
-- **Track Design** — Drag-and-drop subway track building on a grid with blueprint/tech visual style. Place stations, name them (Chinese supported), and connect with color-coded lines.
+- **Track Design** — Drag-and-drop subway track building on a grid with a retro Super Mario-style look (grass map, "?" block interchanges, modern metro trains). Place stations, name them (Chinese supported), and connect with color-coded lines.
 - **Train Assembly** — Build trains with up to 8 cars (1 head + 7 carriages) in an isometric 2.5D workshop. Choose from different eras (Classic/Modern/Future) and city styles (Tokyo, Beijing, etc.). 360° turntable preview.
 - **Customization** — Change train body color, patterns (solid/stripe/gradient/tech lines), and accent colors. Standard and wide-body carriage types.
 - **Run Simulation** — Watch trains run on your designed routes with smooth animations, station stops, passenger boarding, and live operation data (passenger count, on-time rate, capacity).
