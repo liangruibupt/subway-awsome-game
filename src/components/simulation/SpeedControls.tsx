@@ -46,12 +46,14 @@ export function SpeedControls() {
       <button
         onClick={togglePause}
         style={{
-          padding: '4px 10px',
-          background: paused ? '#43b04722' : '#ffe06622',
-          border: `1px solid ${paused ? '#43b047' : '#ffe066'}`,
+          // Solid, high-contrast button: it is the one control that starts the trains
+          padding: '5px 12px',
+          background: paused ? '#43b047' : '#ffcf3f',
+          border: '2px solid #000',
           borderRadius: 4,
-          color: paused ? '#43b047' : '#ffe066',
-          fontSize: 11,
+          boxShadow: '0 3px 0 #000',
+          color: paused ? '#fff' : '#000',
+          fontSize: 12,
           fontFamily: 'var(--font-ui)',
           fontWeight: 'bold',
           cursor: 'pointer',

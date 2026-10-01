@@ -7,57 +7,14 @@ import { TrackRenderer } from '../../engine/TrackRenderer';
 import { InteractionManager } from '../../engine/InteractionManager';
 import { AssemblyRenderer } from '../../engine/AssemblyRenderer';
 import { SimulationEngine } from '../../engine/SimulationEngine';
-import { TrainSpriteRenderer } from '../../engine/TrainSpriteRenderer';
+import { TrainSpriteRenderer, trainLengthBehindHead } from '../../engine/TrainSpriteRenderer';
+import { buildLineRoutes } from '../../engine/LineRoutes';
 import { StationNameDialog } from '../track-design/StationNameDialog';
 import { MiniMap } from '../shared/MiniMap';
 import { useMapStore } from '../../stores/mapStore';
 import { useTrainStore } from '../../stores/trainStore';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { useUIStore } from '../../stores/uiStore';
-import type { Track } from '../../types';
-
-/**
- * Build an ordered station list by walking track connections.
- * Starts from a terminal station (one that appears in only one track) and
- * follows the chain of tracks to produce the route order.
- */
-function buildOrderedStationIds(tracks: Track[], fallbackIds: string[]): string[] {
-  if (tracks.length === 0) return fallbackIds;
-
-  // Build adjacency: stationId → [{ neighborId, trackId }]
-  const adj = new Map<string, { neighbor: string; trackId: string }[]>();
-  for (const t of tracks) {
-    if (!adj.has(t.stationAId)) adj.set(t.stationAId, []);
-    if (!adj.has(t.stationBId)) adj.set(t.stationBId, []);
-    adj.get(t.stationAId)!.push({ neighbor: t.stationBId, trackId: t.id });
-    adj.get(t.stationBId)!.push({ neighbor: t.stationAId, trackId: t.id });
-  }
-
-  // Find a terminal station (degree 1) to start from
-  let startId: string | null = null;
-  for (const [id, neighbors] of adj) {
-    if (neighbors.length === 1) { startId = id; break; }
-  }
-  // If no terminal (loop line), start from any station
-  if (!startId) startId = adj.keys().next().value ?? fallbackIds[0];
-  if (!startId) return fallbackIds;
-
-  // Walk the chain
-  const ordered: string[] = [startId];
-  const visited = new Set<string>([startId]);
-  let current = startId;
-  while (true) {
-    const neighbors = adj.get(current);
-    if (!neighbors) break;
-    const next = neighbors.find(n => !visited.has(n.neighbor));
-    if (!next) break;
-    ordered.push(next.neighbor);
-    visited.add(next.neighbor);
-    current = next.neighbor;
-  }
-
-  return ordered.length >= 2 ? ordered : fallbackIds;
-}
 
 interface PendingStation {
   gridX: number;
@@ -168,13 +125,22 @@ export function GameCanvas() {
         const mapState = useMapStore.getState();
         simEngine.setStations(mapState.stations.map(s => ({ id: s.id, x: s.x, y: s.y, type: s.type })));
 
-        // Build ordered station lists by walking track connections for each line
+        // Routes per line: stations the track runs over become stops, and a
+        // branched line gets one route per branch (trains alternate).
+        const extraPaths = new Map<string, { x: number; y: number }[]>();
         for (const line of mapState.lines) {
           const lineTracks = mapState.tracks.filter(t => t.lineId === line.id);
-          const orderedIds = buildOrderedStationIds(lineTracks, line.stationIds);
-          simEngine.setLine({ id: line.id, name: line.name, color: line.color, stationIds: orderedIds });
+          const plan = buildLineRoutes(lineTracks, mapState.stations, line.stationIds);
+          const routes = plan.routes.length > 0 ? plan.routes : [line.stationIds];
+          simEngine.setLine({ id: line.id, name: line.name, color: line.color, stationIds: routes[0], routes });
+          for (const [k, path] of plan.extraPaths) extraPaths.set(k, path);
         }
 
+        // Split pieces first, so a real track between the same pair wins
+        for (const [k, path] of extraPaths) {
+          const [a, b] = k.split('→');
+          simEngine.setTrackPath(a, b, path);
+        }
         for (const track of mapState.tracks) {
           simEngine.setTrackPath(track.stationAId, track.stationBId, track.path);
         }
@@ -200,35 +166,58 @@ export function GameCanvas() {
 
         const engineRef = simEngine;
         const spriteRef = trainSpriteRenderer;
-        let trainsLoaded = false;
+        const HEAD_CITY_COLORS: Record<string, string> = {
+          'tokyo':   '#e8e8e8',
+          'beijing': '#5dade2',
+          'london':  '#c0392b',
+          'newyork': '#7f8c8d',
+          'neo':     '#2d3436',
+          'quantum': '#3a6ee8',
+        };
+        // trainId → lineId currently loaded in the engine
+        const loadedTrains = new Map<string, string>();
+
+        // Keep the engine in sync with the Deploy panel every frame, so a train
+        // deployed (or removed / re-assigned) at ANY time — before or after
+        // pressing Play — shows up on the map. Previously trains were read only
+        // once on the first Play, so deploying after Play never showed a train.
+        const syncTrains = () => {
+          const trainState = useTrainStore.getState();
+          const wanted = new Map<string, string>();
+          for (const train of trainState.trains) {
+            if (train.lineId) wanted.set(train.id, train.lineId);
+          }
+          for (const [id, lineId] of loadedTrains) {
+            if (wanted.get(id) !== lineId) {
+              engineRef.removeTrain(id);
+              loadedTrains.delete(id);
+              trainCarriageCounts.delete(id);
+              trainStyles.delete(id);
+            }
+          }
+          for (const train of trainState.trains) {
+            if (!train.lineId || loadedTrains.has(train.id)) continue;
+            const capacity = trainState.getTrainCapacity(train.id);
+            engineRef.addTrain({
+              id: train.id, lineId: train.lineId, capacity,
+              length: trainLengthBehindHead(train.carriages.length),
+            });
+            if (!engineRef.hasTrain(train.id)) continue; // line has < 2 stations
+            loadedTrains.set(train.id, train.lineId);
+            trainCarriageCounts.set(train.id, train.carriages.length);
+            trainStyles.set(train.id, {
+              headColor: HEAD_CITY_COLORS[train.head.city] ?? '#0984e3',
+              carriageColors: train.carriages.map(c => c.style.bodyColor),
+            });
+          }
+        };
 
         simTickerFn = (ticker: { deltaMS: number }) => {
           const simStore = useSimulationStore.getState();
 
-          // Lazy-load trains on first unpause (so user can deploy THEN press play)
-          if (!simStore.paused && !trainsLoaded) {
-            trainsLoaded = true;
-            const trainState = useTrainStore.getState();
-            for (const train of trainState.trains) {
-              if (train.lineId) {
-                const capacity = trainState.getTrainCapacity(train.id);
-                engineRef.addTrain({ id: train.id, lineId: train.lineId, capacity });
-                trainCarriageCounts.set(train.id, train.carriages.length);
-                const HEAD_CITY_COLORS: Record<string, string> = {
-                  'tokyo':   '#e8e8e8',
-                  'beijing': '#5dade2',
-                  'london':  '#c0392b',
-                  'newyork': '#7f8c8d',
-                  'neo':     '#2d3436',
-                  'quantum': '#3a6ee8',
-                };
-                trainStyles.set(train.id, {
-                  headColor: HEAD_CITY_COLORS[train.head.city] ?? '#0984e3',
-                  carriageColors: train.carriages.map(c => c.style.bodyColor),
-                });
-              }
-            }
-          }
+          // Deployed trains appear immediately (parked at their first station
+          // while paused) and start moving once Play is pressed.
+          syncTrains();
 
           if (simStore.paused) {
             spriteRef.update(0);
