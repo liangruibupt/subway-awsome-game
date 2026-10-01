@@ -4,7 +4,9 @@
 export interface TrainRunState {
   id: string;
   lineId: string;
-  currentStationIndex: number;  // index into line.stationIds
+  currentStationIndex: number;  // index into the train's current route
+  currentStationId: string;     // station the train is at / just left
+  routeIndex: number;           // which of the line's routes (branches) it is on
   nextStationIndex: number;
   progress: number;             // 0-1 between current and next station
   direction: 1 | -1;           // 1=forward, -1=backward (shuttle)
@@ -22,6 +24,19 @@ interface LineData {
   name: string;
   color: string;
   stationIds: string[];
+  /** Terminal-to-terminal service patterns. A plain line has one; a line with
+   *  branches has one per branch, all starting at the same terminal, and
+   *  trains alternate between them. */
+  routes: string[][];
+}
+
+/** Route geometry for drawing a whole train along the track. */
+export interface TrainRouteGeometry {
+  points: { x: number; y: number }[];
+  cum: number[];       // cumulative distance at each point (grid units)
+  total: number;
+  headDist: number;    // engine head position along the route
+  direction: 1 | -1;
 }
 
 interface StationData {
@@ -43,6 +58,10 @@ interface TrainInternal {
   speed: number;
   status: 'running' | 'stopped' | 'loading';
   dwellTimer: number;
+  routeIndex: number;
+  /** Train length behind the head position (grid units); used to start
+   *  the train clear of a terminal after it reverses. */
+  length: number;
 }
 
 interface StationPassengerData {
@@ -61,11 +80,20 @@ export class SimulationEngine {
   private trackPaths = new Map<string, { x: number; y: number }[]>();
   private timeMinutes = 0; // minutes elapsed from 6 AM
   private dwellTime = 10;  // seconds the train dwells at each station
+  private geometryCache = new Map<string, { points: { x: number; y: number }[]; cum: number[]; stationDist: number[] }>();
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  setLine(line: { id: string; name: string; color: string; stationIds: string[] }): void {
-    this.lines.set(line.id, { ...line, stationIds: [...line.stationIds] });
+  setLine(line: { id: string; name: string; color: string; stationIds: string[]; routes?: string[][] }): void {
+    const routes = (line.routes ?? [line.stationIds])
+      .filter(r => r.length >= 2)
+      .map(r => [...r]);
+    this.lines.set(line.id, {
+      id: line.id, name: line.name, color: line.color,
+      stationIds: [...line.stationIds],
+      routes: routes.length > 0 ? routes : [[...line.stationIds]],
+    });
+    this.geometryCache.clear();
   }
 
   setStations(stations: { id: string; x: number; y: number; type?: string }[]): void {
@@ -89,11 +117,12 @@ export class SimulationEngine {
   setTrackPath(stationAId: string, stationBId: string, path: { x: number; y: number }[]): void {
     this.trackPaths.set(`${stationAId}→${stationBId}`, path);
     this.trackPaths.set(`${stationBId}→${stationAId}`, [...path].reverse());
+    this.geometryCache.clear();
   }
 
-  addTrain(config: { id: string; lineId: string; capacity: number }): void {
+  addTrain(config: { id: string; lineId: string; capacity: number; length?: number }): void {
     const line = this.lines.get(config.lineId);
-    if (!line || line.stationIds.length < 2) return;
+    if (!line || line.routes[0].length < 2) return;
 
     const train: TrainInternal = {
       id: config.id,
@@ -107,12 +136,20 @@ export class SimulationEngine {
       speed: TRAIN_SPEED,
       status: 'running',
       dwellTimer: 0,
+      routeIndex: 0,
+      length: Math.max(0, config.length ?? 0),
     };
+    // Start with the whole train on the track, head clear of the terminal
+    train.progress = this.departureOffset(train);
 
     // Board any passengers waiting at the spawn station immediately (no dwell)
-    this.doBoard(train, line.stationIds[0], 5);
+    this.doBoard(train, line.routes[0][0], 5);
 
     this.trains.set(config.id, train);
+  }
+
+  hasTrain(id: string): boolean {
+    return this.trains.has(id);
   }
 
   removeTrain(id: string): void {
@@ -163,6 +200,8 @@ export class SimulationEngine {
       id: train.id,
       lineId: train.lineId,
       currentStationIndex: train.currentStationIndex,
+      currentStationId: this.routeOf(train)[train.currentStationIndex] ?? '',
+      routeIndex: train.routeIndex,
       nextStationIndex: train.nextStationIndex,
       progress: train.progress,
       direction: train.direction,
@@ -215,7 +254,86 @@ export class SimulationEngine {
     return this.getPathLength(path);
   }
 
+  /** Station list of the route this train is currently running. */
+  getTrainRoute(trainId: string): string[] {
+    const train = this.trains.get(trainId);
+    return train ? [...this.routeOf(train)] : [];
+  }
+
+  /** Whole-route polyline plus the head position on it, so a renderer can lay
+   *  every carriage on the actual track (around corners, through stations). */
+  getTrainRouteGeometry(trainId: string): TrainRouteGeometry | null {
+    const train = this.trains.get(trainId);
+    if (!train) return null;
+    const geo = this.routeGeometry(train);
+    if (!geo || geo.points.length < 2) return null;
+    const cur = train.currentStationIndex;
+    const next = train.nextStationIndex;
+    const path = this.getTrackPath(train);
+    const hopLen = path ? this.getPathLength(path) : 0;
+    const base = geo.stationDist[cur] ?? 0;
+    const forward = next >= cur;
+    const headDist = forward ? base + train.progress * hopLen : base - train.progress * hopLen;
+    return {
+      points: geo.points,
+      cum: geo.cum,
+      total: geo.cum[geo.cum.length - 1],
+      headDist,
+      direction: forward ? 1 : -1,
+    };
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
+
+  private routeOf(train: TrainInternal): string[] {
+    const line = this.lines.get(train.lineId);
+    if (!line) return [];
+    return line.routes[train.routeIndex % line.routes.length] ?? line.routes[0];
+  }
+
+  private hopPath(fromId: string, toId: string): { x: number; y: number }[] | null {
+    const p = this.trackPaths.get(`${fromId}→${toId}`);
+    if (p && p.length >= 2) return p;
+    const a = this.stations.get(fromId);
+    const b = this.stations.get(toId);
+    return a && b ? [{ x: a.x, y: a.y }, { x: b.x, y: b.y }] : null;
+  }
+
+  private routeGeometry(train: TrainInternal) {
+    const key = `${train.lineId}#${train.routeIndex}`;
+    const cached = this.geometryCache.get(key);
+    if (cached) return cached;
+    const route = this.routeOf(train);
+    const points: { x: number; y: number }[] = [];
+    const cum: number[] = [];
+    const stationDist: number[] = [0];
+    for (let i = 0; i + 1 < route.length; i++) {
+      const path = this.hopPath(route[i], route[i + 1]);
+      if (!path) return null;
+      for (let j = 0; j < path.length; j++) {
+        const pt = path[j];
+        const last = points[points.length - 1];
+        if (last && Math.abs(last.x - pt.x) < 1e-9 && Math.abs(last.y - pt.y) < 1e-9) continue;
+        cum.push(last ? cum[cum.length - 1] + Math.hypot(pt.x - last.x, pt.y - last.y) : 0);
+        points.push({ x: pt.x, y: pt.y });
+      }
+      stationDist.push(cum[cum.length - 1] ?? 0);
+    }
+    const geo = { points, cum, stationDist };
+    this.geometryCache.set(key, geo);
+    return geo;
+  }
+
+  /** Progress at which a train leaving a terminal starts, so its whole length
+   *  is on the track (a real train reverses by the driver changing cabs: the
+   *  old tail becomes the new head). Capped so the next stop is still ahead. */
+  private departureOffset(train: TrainInternal): number {
+    if (train.length <= 0) return 0;
+    const path = this.getTrackPath(train);
+    const hopLen = path ? this.getPathLength(path) : 0;
+    if (hopLen <= 0) return 0;
+    return Math.min(train.length / hopLen, 0.9);
+  }
 
   private getRushMultiplier(): number {
     const t = this.timeMinutes;
@@ -250,12 +368,13 @@ export class SimulationEngine {
   private updateTrain(train: TrainInternal, deltaSeconds: number, boardingPerStation: number, alightingPerStation: number): void {
     const line = this.lines.get(train.lineId);
     if (!line) return;
+    let route = this.routeOf(train);
 
     if (train.status === 'stopped' || train.status === 'loading') {
       train.dwellTimer -= deltaSeconds;
       if (train.dwellTimer <= 0) {
         train.dwellTimer = 0;
-        const stationId = line.stationIds[train.currentStationIndex];
+        const stationId = route[train.currentStationIndex];
         this.doAlight(train, stationId, alightingPerStation);
         this.doBoard(train, stationId, boardingPerStation);
         train.status = 'running';
@@ -264,8 +383,8 @@ export class SimulationEngine {
     }
 
     // status === 'running': advance along track
-    const stationA = this.stations.get(line.stationIds[train.currentStationIndex]);
-    const stationB = this.stations.get(line.stationIds[train.nextStationIndex]);
+    const stationA = this.stations.get(route[train.currentStationIndex]);
+    const stationB = this.stations.get(route[train.nextStationIndex]);
     if (!stationA || !stationB) return;
 
     const dx = stationB.x - stationA.x;
@@ -283,19 +402,32 @@ export class SimulationEngine {
       train.progress = 0;
 
       // Reverse at terminals
-      const lastIdx = line.stationIds.length - 1;
+      const lastIdx = route.length - 1;
+      let reversed = false;
       if (arrivedAt === lastIdx) {
         train.direction = -1;
+        reversed = true;
       } else if (arrivedAt === 0) {
         train.direction = 1;
+        reversed = true;
+        // Back at the home terminal: take the next branch, so a line with
+        // branches serves all of them in turn (every route starts here).
+        if (line.routes.length > 1) {
+          train.routeIndex = (train.routeIndex + 1) % line.routes.length;
+          route = this.routeOf(train);
+        }
       }
 
       // Compute next destination
+      const newLast = route.length - 1;
       if (train.direction === 1) {
-        train.nextStationIndex = Math.min(arrivedAt + 1, lastIdx);
+        train.nextStationIndex = Math.min(arrivedAt + 1, newLast);
       } else {
         train.nextStationIndex = Math.max(arrivedAt - 1, 0);
       }
+
+      // Driver changes cabs: the train leaves from its far end
+      if (reversed) train.progress = this.departureOffset(train);
 
       train.status = 'stopped';
       train.dwellTimer = this.dwellTime;
@@ -303,10 +435,9 @@ export class SimulationEngine {
   }
 
   private getTrackPath(train: TrainInternal): { x: number; y: number }[] | null {
-    const line = this.lines.get(train.lineId);
-    if (!line) return null;
-    const fromId = line.stationIds[train.currentStationIndex];
-    const toId = line.stationIds[train.nextStationIndex];
+    const route = this.routeOf(train);
+    const fromId = route[train.currentStationIndex];
+    const toId = route[train.nextStationIndex];
     return this.trackPaths.get(`${fromId}→${toId}`) ?? null;
   }
 
@@ -324,10 +455,9 @@ export class SimulationEngine {
     const path = this.getTrackPath(train);
     if (!path || path.length < 2) {
       // Fallback: straight line
-      const line = this.lines.get(train.lineId);
-      if (!line) return { x: 0, y: 0 };
-      const stA = this.stations.get(line.stationIds[train.currentStationIndex]);
-      const stB = this.stations.get(line.stationIds[train.nextStationIndex]);
+      const route = this.routeOf(train);
+      const stA = this.stations.get(route[train.currentStationIndex]);
+      const stB = this.stations.get(route[train.nextStationIndex]);
       if (!stA || !stB) return { x: 0, y: 0 };
       return {
         x: stA.x + (stB.x - stA.x) * train.progress,

@@ -1,5 +1,5 @@
 // src/engine/TrainSpriteRenderer.ts
-// Renders moving trains on the blueprint PixiJS canvas during simulation mode.
+// Renders moving trains on the overworld PixiJS canvas during simulation mode.
 import { Container, Graphics, Text } from 'pixi.js';
 import type { PixiApp } from './PixiApp';
 import type { SimulationEngine, TrainRunState } from './SimulationEngine';
@@ -13,46 +13,42 @@ const HEAD_H = 13;
 const CARRIAGE_W = 28;
 const CARRIAGE_H = 13;
 const CAR_GAP = 2;
-const TRAIL_LENGTH = 200;
 
-interface PathPosition {
-  x: number;
-  y: number;
-  dx: number;
-  dy: number;
+/** Train length behind the head car's centre, in grid units (the engine uses
+ *  it to start a reversing train clear of the terminal). */
+export function trainLengthBehindHead(carriageCount: number): number {
+  return (HEAD_W / 2 + carriageCount * (CAR_GAP + CARRIAGE_W)) / GRID_SIZE;
 }
 
-function getPositionOnPath(
-  path: { x: number; y: number }[],
-  progress: number,
-  totalLen: number,
-): PathPosition {
-  const targetDist = totalLen * Math.max(0, Math.min(1, progress));
-  let traveled = 0;
-  for (let i = 1; i < path.length; i++) {
-    const segLen = Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].y - path[i - 1].y);
-    if (traveled + segLen >= targetDist) {
-      const t = segLen > 0 ? (targetDist - traveled) / segLen : 0;
-      const x = path[i - 1].x + (path[i].x - path[i - 1].x) * t;
-      const y = path[i - 1].y + (path[i].y - path[i - 1].y) * t;
-      const dx = path[i].x - path[i - 1].x;
-      const dy = path[i].y - path[i - 1].y;
-      return { x, y, dx: dx || 0, dy: dy || 0 };
-    }
-    traveled += segLen;
-  }
-  return { x: path[path.length - 1].x, y: path[path.length - 1].y, dx: 0, dy: 0 };
+/** Point + tangent angle at distance `d` along a polyline. */
+function pointAt(
+  points: { x: number; y: number }[],
+  cum: number[],
+  d: number,
+): { x: number; y: number; angle: number } {
+  const total = cum[cum.length - 1];
+  const dist = Math.max(0, Math.min(total, d));
+  let i = 1;
+  while (i < points.length - 1 && cum[i] < dist) i++;
+  const a = points[i - 1];
+  const b = points[i];
+  const seg = cum[i] - cum[i - 1];
+  const t = seg > 0 ? (dist - cum[i - 1]) / seg : 0;
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+    angle: Math.atan2(b.y - a.y, b.x - a.x),
+  };
 }
 
 export class TrainSpriteRenderer {
   private container: Container;
   private engine: SimulationEngine;
   private stationMap: Map<string, { x: number; y: number; name: string }>;
-  private lineMap: Map<string, { color: string; stationIds: string[] }>;
   private trainCarriageCounts: Map<string, number>;
   private trainStyles: Map<string, { headColor: string; carriageColors: string[] }>;
+  private lineMap: Map<string, { color: string; stationIds: string[] }>;
 
-  private trails = new Map<string, { x: number; y: number }[]>();
   private pulseTimers = new Map<string, number>();
   private passengerAnimTimers = new Map<string, number>();
 
@@ -93,17 +89,6 @@ export class TrainSpriteRenderer {
       const colorStr = this.lineMap.get(state.lineId)?.color ?? '#ffffff';
       const carriageCount = this.trainCarriageCounts.get(state.id) ?? 0;
 
-      // Update trail
-      if (!this.trails.has(state.id)) this.trails.set(state.id, []);
-      const trail = this.trails.get(state.id)!;
-      const last = trail[trail.length - 1];
-      // Only record real movement, so a long dwell doesn't flatten the trail
-      // (carriages keep trailing the way the train actually came in).
-      if (!last || Math.abs(last.x - px) + Math.abs(last.y - py) > 0.5) {
-        trail.push({ x: px, y: py });
-        if (trail.length > TRAIL_LENGTH) trail.shift();
-      }
-
       // Update pulse timer (for stopped/loading)
       if (state.status !== 'running') {
         this.pulseTimers.set(state.id, (this.pulseTimers.get(state.id) ?? 0) + deltaSeconds);
@@ -118,7 +103,7 @@ export class TrainSpriteRenderer {
         this.passengerAnimTimers.delete(state.id);
       }
 
-      this.renderTrain(state, px, py, colorStr, carriageCount, trail);
+      this.renderTrain(state, px, py, colorStr, carriageCount);
     }
 
     // Advance and prune animation dots
@@ -130,37 +115,34 @@ export class TrainSpriteRenderer {
     // Detect boarding / alighting for trains at stations
     for (const state of trainStates) {
       if (state.status === 'stopped' || state.status === 'loading') {
-        const line = this.lineMap.get(state.lineId);
-        if (line && state.currentStationIndex < line.stationIds.length) {
-          const stationId = line.stationIds[state.currentStationIndex];
-          const stationData = this.stationMap.get(stationId);
-          if (stationData) {
-            const sx = stationData.x * GRID_SIZE;
-            const sy = stationData.y * GRID_SIZE;
-            const tx = state.worldX * GRID_SIZE;
-            const ty = state.worldY * GRID_SIZE;
+        const stationId = state.currentStationId;
+        const stationData = this.stationMap.get(stationId);
+        if (stationData) {
+          const sx = stationData.x * GRID_SIZE;
+          const sy = stationData.y * GRID_SIZE;
+          const tx = state.worldX * GRID_SIZE;
+          const ty = state.worldY * GRID_SIZE;
 
-            // Boarding: waiting count decreased
-            const currentWaiting = this.engine.getWaitingPassengers(stationId);
-            if (this.prevWaiting.has(stationId)) {
-              const prev = this.prevWaiting.get(stationId)!;
-              if (prev > currentWaiting) {
-                const diff = Math.min(prev - currentWaiting, 5);
-                for (let i = 0; i < diff; i++) {
-                  this.boardingAnims.push({ sx, sy, tx, ty, t: 0 });
-                }
+          // Boarding: waiting count decreased
+          const currentWaiting = this.engine.getWaitingPassengers(stationId);
+          if (this.prevWaiting.has(stationId)) {
+            const prev = this.prevWaiting.get(stationId)!;
+            if (prev > currentWaiting) {
+              const diff = Math.min(prev - currentWaiting, 5);
+              for (let i = 0; i < diff; i++) {
+                this.boardingAnims.push({ sx, sy, tx, ty, t: 0 });
               }
             }
+          }
 
-            // Alighting: train passenger count decreased
-            const currentPax = state.passengers;
-            if (this.prevTrainPax.has(state.id)) {
-              const prev = this.prevTrainPax.get(state.id)!;
-              if (prev > currentPax) {
-                const diff = Math.min(prev - currentPax, 5);
-                for (let i = 0; i < diff; i++) {
-                  this.alightingAnims.push({ sx, sy, tx, ty, t: 0 });
-                }
+          // Alighting: train passenger count decreased
+          const currentPax = state.passengers;
+          if (this.prevTrainPax.has(state.id)) {
+            const prev = this.prevTrainPax.get(state.id)!;
+            if (prev > currentPax) {
+              const diff = Math.min(prev - currentPax, 5);
+              for (let i = 0; i < diff; i++) {
+                this.alightingAnims.push({ sx, sy, tx, ty, t: 0 });
               }
             }
           }
@@ -198,11 +180,10 @@ export class TrainSpriteRenderer {
     }
     this.container.addChild(animG);
 
-    // Clean up stale trails/timers
+    // Clean up stale timers
     const activeIds = new Set(trainStates.map(s => s.id));
-    for (const id of [...this.trails.keys()]) {
+    for (const id of [...this.pulseTimers.keys(), ...this.passengerAnimTimers.keys()]) {
       if (!activeIds.has(id)) {
-        this.trails.delete(id);
         this.pulseTimers.delete(id);
         this.passengerAnimTimers.delete(id);
       }
@@ -215,56 +196,8 @@ export class TrainSpriteRenderer {
     py: number,
     colorStr: string,
     carriageCount: number,
-    trail: { x: number; y: number }[],
   ): void {
     const trainContainer = new Container();
-
-    // ── Get track path for path-based car positioning ────────────────────────
-    const trackPath = this.engine.getTrainTrackPath(state.id);
-    const pathLength = this.engine.getTrainPathLength(state.id);
-    const hasPath = trackPath !== null && trackPath.length >= 2 && pathLength > 0;
-
-    // ── Determine head direction from the current path segment ───────────────
-    let dirX = 1;
-    let dirY = 0;
-
-    if (hasPath) {
-      const headPos = getPositionOnPath(trackPath!, state.progress, pathLength);
-      const dLen = Math.sqrt(headPos.dx * headPos.dx + headPos.dy * headPos.dy);
-      if (dLen > 0) {
-        dirX = headPos.dx / dLen;
-        dirY = headPos.dy / dLen;
-      }
-    } else if (trail.length >= 2) {
-      const prev = trail[trail.length - 2];
-      const curr = trail[trail.length - 1];
-      const dx = curr.x - prev.x;
-      const dy = curr.y - prev.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 0.5) {
-        dirX = dx / dist;
-        dirY = dy / dist;
-      }
-    }
-
-    // Direction for carriage placement: use TRAIL (actual movement history)
-    // not path segment direction. This matters when stopped at a station —
-    // the path points forward but carriages should trail behind the arrival direction.
-    let trailDirX = dirX;
-    let trailDirY = dirY;
-    if (trail.length >= 2) {
-      // Find the last significant movement in the trail
-      for (let i = trail.length - 1; i >= 1; i--) {
-        const dx = trail[i].x - trail[i - 1].x;
-        const dy = trail[i].y - trail[i - 1].y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 0.5) {
-          trailDirX = dx / dist;
-          trailDirY = dy / dist;
-          break;
-        }
-      }
-    }
 
     // ── Train style colors ───────────────────────────────────────────────────
     const styles = this.trainStyles.get(state.id);
@@ -274,95 +207,75 @@ export class TrainSpriteRenderer {
 
     // ── Pulsing ring around the current station when stopped/loading ─────────
     if (state.status !== 'running') {
-      const line = this.lineMap.get(state.lineId);
-      if (line && state.currentStationIndex < line.stationIds.length) {
-        const stationId = line.stationIds[state.currentStationIndex];
-        const station = this.stationMap.get(stationId);
-        if (station) {
-          const sx = station.x * GRID_SIZE;
-          const sy = station.y * GRID_SIZE;
-          const pulseT = this.pulseTimers.get(state.id) ?? 0;
-          const pulseR = 14 + Math.sin(pulseT * Math.PI * 2) * 4;
-          const pulseAlpha = 0.25 + Math.abs(Math.sin(pulseT * Math.PI * 2)) * 0.2;
-          g.circle(sx, sy, pulseR + 4).stroke({ color: PAL.outline, width: 4, alpha: pulseAlpha + 0.2 });
-          g.circle(sx, sy, pulseR + 4).stroke({ color: PAL.white, width: 2, alpha: pulseAlpha + 0.4 });
-        }
+      const station = this.stationMap.get(state.currentStationId);
+      if (station) {
+        const sx = station.x * GRID_SIZE;
+        const sy = station.y * GRID_SIZE;
+        const pulseT = this.pulseTimers.get(state.id) ?? 0;
+        const pulseR = 14 + Math.sin(pulseT * Math.PI * 2) * 4;
+        const pulseAlpha = 0.25 + Math.abs(Math.sin(pulseT * Math.PI * 2)) * 0.2;
+        g.circle(sx, sy, pulseR + 4).stroke({ color: PAL.outline, width: 4, alpha: pulseAlpha + 0.2 });
+        g.circle(sx, sy, pulseR + 4).stroke({ color: PAL.white, width: 2, alpha: pulseAlpha + 0.4 });
       }
     }
 
-    // ── Driving car (rotated to the current path direction) ──────────────────
+    // ── Lay every car on the actual track ────────────────────────────────────
+    // Cars sit at fixed distances behind the head along the route polyline, so
+    // they follow corners and never hang off the end of the line: at a
+    // terminal the whole train is kept on the track.
+    const geo = this.engine.getTrainRouteGeometry(state.id);
+    const front = HEAD_W / 2 / GRID_SIZE;
+    const back = trainLengthBehindHead(carriageCount);
+    const offsets: number[] = [0];
+    for (let i = 0; i < carriageCount; i++) {
+      offsets.push((HEAD_W / 2 + CAR_GAP + CARRIAGE_W / 2 + i * (CARRIAGE_W + CAR_GAP)) / GRID_SIZE);
+    }
+    const placed: { x: number; y: number; angle: number }[] = [];
+    if (geo && geo.total > 0) {
+      const d = geo.direction;
+      let head = geo.headDist;
+      if (geo.total >= front + back) {
+        const lo = d === 1 ? back : front;
+        const hi = d === 1 ? geo.total - front : geo.total - back;
+        head = Math.max(lo, Math.min(hi, head));
+      }
+      for (const off of offsets) {
+        const p = pointAt(geo.points, geo.cum, head - d * off);
+        placed.push({
+          x: p.x * GRID_SIZE,
+          y: p.y * GRID_SIZE,
+          angle: d === 1 ? p.angle : p.angle + Math.PI,
+        });
+      }
+    } else {
+      for (const off of offsets) placed.push({ x: px - off * GRID_SIZE, y: py, angle: 0 });
+    }
+
     const layer = new Container();
-    const isLastHead = carriageCount === 0;
     {
       const hg = new Graphics();
-      drawMetroTop(hg, HEAD_W, HEAD_H, toColorNum(headColor), { head: true, tail: isLastHead });
-      hg.x = px;
-      hg.y = py;
-      hg.rotation = Math.atan2(dirY, dirX);
+      drawMetroTop(hg, HEAD_W, HEAD_H, toColorNum(headColor), { head: true, tail: carriageCount === 0 });
+      hg.x = placed[0].x;
+      hg.y = placed[0].y;
+      hg.rotation = placed[0].angle;
       layer.addChild(hg);
     }
-
-    // ── Carriages: trail-based positioning ──────────────────────────────────
-    // Each carriage is placed at an earlier position in the movement trail,
-    // rotated to the trail segment it sits on, so cars follow corners and
-    // diagonals naturally.
-    {
-      const firstOffset = HEAD_W / 2 + CAR_GAP + CARRIAGE_W / 2;
-      const interCarriage = CARRIAGE_W + CAR_GAP;
-      const cars: Graphics[] = [];
-
-      for (let i = 0; i < carriageCount; i++) {
-        const targetDist = firstOffset + i * interCarriage;
-
-        let cpx = px - trailDirX * targetDist;
-        let cpy = py - trailDirY * targetDist;
-        let angle = Math.atan2(trailDirY, trailDirX);
-
-        if (trail.length >= 2) {
-          let remaining = targetDist;
-          // Walk backward through the trail from the head position
-          for (let j = trail.length - 1; j >= 1 && remaining > 0; j--) {
-            const tdx = trail[j].x - trail[j - 1].x;
-            const tdy = trail[j].y - trail[j - 1].y;
-            const segDist = Math.sqrt(tdx * tdx + tdy * tdy);
-            if (segDist < 0.1) continue;
-
-            if (segDist >= remaining) {
-              const t = remaining / segDist;
-              cpx = trail[j].x - tdx * t;
-              cpy = trail[j].y - tdy * t;
-              angle = Math.atan2(tdy, tdx);
-              remaining = 0;
-            } else {
-              remaining -= segDist;
-            }
-          }
-          // If trail was too short, extend from the oldest trail point
-          if (remaining > 0) {
-            let tdx = trail[1].x - trail[0].x;
-            let tdy = trail[1].y - trail[0].y;
-            let segDist = Math.sqrt(tdx * tdx + tdy * tdy);
-            if (segDist <= 0.1) { tdx = trailDirX; tdy = trailDirY; segDist = 1; }
-            cpx = trail[0].x - (tdx / segDist) * remaining;
-            cpy = trail[0].y - (tdy / segDist) * remaining;
-            angle = Math.atan2(tdy, tdx);
-          }
-        }
-
-        const carriageColor = styles?.carriageColors[i] ?? colorStr;
-        const cg = new Graphics();
-        drawMetroTop(cg, CARRIAGE_W, CARRIAGE_H, toColorNum(carriageColor), {
-          gangway: true,
-          tail: i === carriageCount - 1,
-        });
-        cg.x = cpx;
-        cg.y = cpy;
-        cg.rotation = angle;
-        cars.push(cg);
-      }
+    for (let i = 0; i < carriageCount; i++) {
+      const carriageColor = styles?.carriageColors[i] ?? colorStr;
+      const cg = new Graphics();
+      drawMetroTop(cg, CARRIAGE_W, CARRIAGE_H, toColorNum(carriageColor), {
+        gangway: true,
+        tail: i === carriageCount - 1,
+      });
+      cg.x = placed[i + 1].x;
+      cg.y = placed[i + 1].y;
+      cg.rotation = placed[i + 1].angle;
       // Stack front-to-back so each gangway tucks under the car in front of it
-      for (const car of cars) layer.addChildAt(car, 0);
+      layer.addChildAt(cg, 0);
     }
+    // Labels / coin effects follow the drawn head
+    px = placed[0].x;
+    py = placed[0].y;
 
     trainContainer.addChild(g);
     trainContainer.addChild(layer);
@@ -422,7 +335,7 @@ export class TrainSpriteRenderer {
     this.container.addChild(g);
     if (count > 10) {
       const label = new Text({
-        text: String(count),
+        text: `x${count}`,
         style: {
           fontFamily: PIXEL_FONT,
           fontSize: 7,
@@ -430,7 +343,6 @@ export class TrainSpriteRenderer {
           stroke: { color: PAL.outline, width: 3 },
         },
       });
-      label.text = `x${count}`;
       label.anchor.set(0, 0.5);
       label.x = startX + 5 * 9 - 2;
       label.y = startY;
