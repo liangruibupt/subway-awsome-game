@@ -86,3 +86,52 @@ describe('SimulationEngine with routes', () => {
     expect(geo.headDist).toBeCloseTo(3); // head starts 3 units out: tail at the terminal
   });
 });
+
+describe('lines with a loop', () => {
+  // The user's layout: spur 3-5-2-1, loop 1-6-4-7-11-10-8-9-1, spur 11-12
+  const P: Record<string, [number, number]> = {
+    s3: [0, 0], s5: [7, 0], s2: [13, 0], s1: [23, 4], s6: [27, 4], s4: [33, 4],
+    s7: [33, 7], s9: [17, 9], s8: [25, 9], s10: [25, 13], s11: [33, 14], s12: [41, 11],
+  };
+  const st = Object.entries(P).map(([id, [x, y]]) => ({ id, x, y }));
+  const g = (id: string) => st.find(s => s.id === id)!;
+  const pairs = ['s3-s5', 's5-s2', 's2-s1', 's1-s6', 's6-s4', 's4-s7', 's7-s11',
+    's1-s9', 's9-s8', 's8-s10', 's10-s11', 's11-s12'];
+  const tracks = pairs.map(p => p.split('-')).map(([a, b]) => track(g(a), g(b)));
+
+  it('runs terminal to terminal round both sides of the loop, reaching every station', () => {
+    const { plan, stops } = stopsOf(st, tracks, 400, 2);
+    expect(plan.routes).toEqual([
+      ['s3', 's5', 's2', 's1', 's6', 's4', 's7', 's11', 's12'],
+      ['s3', 's5', 's2', 's1', 's9', 's8', 's10', 's11', 's12'],
+    ]);
+    expect(new Set(stops)).toEqual(new Set(st.map(s => s.id)));
+    // after reaching 12 it heads back; next trip takes the other side of the loop
+    const firstReturn = stops.indexOf('s3');
+    expect(stops.slice(firstReturn + 1, firstReturn + 8))
+      .toEqual(['s5', 's2', 's1', 's9', 's8', 's10', 's11']);
+  });
+
+  it('takes a lollipop line round its loop and back home', () => {
+    const a = { id: 'a', x: 0, y: 0 }, b = { id: 'b', x: 5, y: 0 };
+    const c = { id: 'c', x: 10, y: 0 }, d = { id: 'd', x: 10, y: 5 }, e = { id: 'e', x: 5, y: 5 };
+    const { plan, stops } = stopsOf([a, b, c, d, e],
+      [track(a, b), track(b, c), track(c, d), track(d, e), track(e, b)], 120);
+    expect(plan.routes).toHaveLength(1);
+    expect(plan.routes[0][0]).toBe('a');
+    expect(plan.routes[0][plan.routes[0].length - 1]).toBe('a');
+    expect(new Set(stops)).toEqual(new Set(['a', 'b', 'c', 'd', 'e']));
+  });
+
+  it('runs a ring line round and round without reversing', () => {
+    const a = { id: 'a', x: 0, y: 0 }, b = { id: 'b', x: 6, y: 0 };
+    const c = { id: 'c', x: 6, y: 6 }, d = { id: 'd', x: 0, y: 6 };
+    const { plan, stops } = stopsOf([a, b, c, d],
+      [track(a, b), track(b, c), track(c, d), track(d, a)], 120);
+    const r = plan.routes[0];
+    expect(r[0]).toBe(r[r.length - 1]);
+    expect(r).toHaveLength(5);
+    // same rotation every lap: the sequence repeats with period 4
+    for (let i = 4; i < 12; i++) expect(stops[i]).toBe(stops[i - 4]);
+  });
+});
