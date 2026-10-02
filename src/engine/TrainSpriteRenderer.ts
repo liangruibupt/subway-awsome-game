@@ -1,5 +1,10 @@
 // src/engine/TrainSpriteRenderer.ts
 // Renders moving trains on the overworld PixiJS canvas during simulation mode.
+//
+// Every display object is created ONCE and then only moved / redrawn in place.
+// Creating and destroying fresh Graphics/Text objects every frame (the old
+// approach) leaked several MB of memory per second, which crashed the browser
+// tab ("Aw, Snap!") after a few minutes of running.
 import { Container, Graphics, Text } from 'pixi.js';
 import type { PixiApp } from './PixiApp';
 import type { SimulationEngine, TrainRunState } from './SimulationEngine';
@@ -41,8 +46,31 @@ function pointAt(
   };
 }
 
+const labelStyle = (fill: number) => ({
+  fontFamily: PIXEL_FONT,
+  fontSize: 7,
+  fill,
+  stroke: { color: PAL.outline, width: 3 },
+});
+
+/** Persistent display objects for one train. */
+interface TrainView {
+  root: Container;
+  pulse: Graphics;
+  cars: Container;       // head + carriages, rebuilt only when the consist changes
+  carsKey: string;
+  dots: Graphics;
+  label: Text;
+}
+
 export class TrainSpriteRenderer {
   private container: Container;
+  private trainLayer = new Container();
+  private waitingG = new Graphics();
+  private waitingLabels = new Map<string, Text>();
+  private animG = new Graphics();
+  private views = new Map<string, TrainView>();
+
   private engine: SimulationEngine;
   private stationMap: Map<string, { x: number; y: number; name: string }>;
   private trainCarriageCounts: Map<string, number>;
@@ -67,6 +95,8 @@ export class TrainSpriteRenderer {
     trainStyles: Map<string, { headColor: string; carriageColors: string[] }>,
   ) {
     this.container = new Container();
+    // z-order: trains → waiting coins (+ counts) → boarding/alighting coins
+    this.container.addChild(this.trainLayer, this.waitingG, this.animG);
     pixiApp.worldContainer.addChild(this.container);
     this.engine = engine;
     this.stationMap = stationMap;
@@ -76,10 +106,6 @@ export class TrainSpriteRenderer {
   }
 
   update(deltaSeconds: number): void {
-    // Clear previous frame's visuals
-    const removed = this.container.removeChildren();
-    for (const child of removed) child.destroy({ children: true });
-
     const trainStates = this.engine.getAllTrainStates();
     this.clock += deltaSeconds > 0 ? deltaSeconds : 1 / 60;
 
@@ -104,6 +130,15 @@ export class TrainSpriteRenderer {
       }
 
       this.renderTrain(state, px, py, colorStr, carriageCount);
+    }
+
+    // Drop views of trains that are gone
+    const activeIds = new Set(trainStates.map(s => s.id));
+    for (const [id, view] of this.views) {
+      if (!activeIds.has(id)) {
+        view.root.destroy({ children: true });
+        this.views.delete(id);
+      }
     }
 
     // Advance and prune animation dots
@@ -156,17 +191,16 @@ export class TrainSpriteRenderer {
       this.prevWaiting.set(stationId, this.engine.getWaitingPassengers(stationId));
     }
 
-    // Render waiting passenger dots at stations
+    // Waiting passengers at stations
+    this.waitingG.clear();
     for (const [stationId, stationData] of this.stationMap) {
       const waiting = this.engine.getWaitingPassengers(stationId);
-      if (waiting <= 0) continue;
-      const sx = stationData.x * GRID_SIZE;
-      const sy = stationData.y * GRID_SIZE;
-      this.renderWaitingDots(sx, sy, waiting);
+      this.renderWaitingDots(stationId, stationData.x * GRID_SIZE, stationData.y * GRID_SIZE, waiting);
     }
 
-    // Render boarding and alighting animations
-    const animG = new Graphics();
+    // Boarding and alighting animations
+    const animG = this.animG;
+    animG.clear();
     for (const anim of this.boardingAnims) {
       const x = anim.sx + (anim.tx - anim.sx) * anim.t;
       // Coins hop along a little arc, like popping out of a block
@@ -178,15 +212,52 @@ export class TrainSpriteRenderer {
       const y = anim.ty + (anim.sy - anim.ty) * anim.t - Math.sin(anim.t * Math.PI) * 18;
       drawCoin(animG, x, y, 4, Math.abs(Math.cos(anim.t * Math.PI * 3)), 0.4 + anim.t * 0.6);
     }
-    this.container.addChild(animG);
 
     // Clean up stale timers
-    const activeIds = new Set(trainStates.map(s => s.id));
     for (const id of [...this.pulseTimers.keys(), ...this.passengerAnimTimers.keys()]) {
       if (!activeIds.has(id)) {
         this.pulseTimers.delete(id);
         this.passengerAnimTimers.delete(id);
       }
+    }
+  }
+
+  private viewFor(id: string): TrainView {
+    let view = this.views.get(id);
+    if (!view) {
+      const root = new Container();
+      const pulse = new Graphics();
+      const cars = new Container();
+      const dots = new Graphics();
+      const label = new Text({ text: 'STOPPED', style: labelStyle(PAL.white) });
+      label.anchor.set(0.5, 1);
+      label.visible = false;
+      root.addChild(pulse, cars, dots, label);
+      this.trainLayer.addChild(root);
+      view = { root, pulse, cars, carsKey: '', dots, label };
+      this.views.set(id, view);
+    }
+    return view;
+  }
+
+  /** (Re)draw the head and carriages — only when the consist or colours change. */
+  private buildCars(view: TrainView, headColor: string, carriageColors: string[]): void {
+    const key = `${headColor}|${carriageColors.join(',')}`;
+    if (view.carsKey === key) return;
+    view.carsKey = key;
+    for (const child of view.cars.removeChildren()) child.destroy();
+    const n = carriageColors.length;
+    const hg = new Graphics();
+    drawMetroTop(hg, HEAD_W, HEAD_H, toColorNum(headColor), { head: true, tail: n === 0 });
+    view.cars.addChild(hg);
+    for (let i = 0; i < n; i++) {
+      const cg = new Graphics();
+      drawMetroTop(cg, CARRIAGE_W, CARRIAGE_H, toColorNum(carriageColors[i]), {
+        gangway: true,
+        tail: i === n - 1,
+      });
+      // Stack front-to-back so each gangway tucks under the car in front of it
+      view.cars.addChildAt(cg, 0);
     }
   }
 
@@ -197,15 +268,17 @@ export class TrainSpriteRenderer {
     colorStr: string,
     carriageCount: number,
   ): void {
-    const trainContainer = new Container();
+    const view = this.viewFor(state.id);
 
     // ── Train style colors ───────────────────────────────────────────────────
     const styles = this.trainStyles.get(state.id);
     const headColor = styles?.headColor ?? colorStr;
-
-    const g = new Graphics();
+    const carriageColors = Array.from({ length: carriageCount }, (_, i) => styles?.carriageColors[i] ?? colorStr);
+    this.buildCars(view, headColor, carriageColors);
 
     // ── Pulsing ring around the current station when stopped/loading ─────────
+    const g = view.pulse;
+    g.clear();
     if (state.status !== 'running') {
       const station = this.stationMap.get(state.currentStationId);
       if (station) {
@@ -222,7 +295,8 @@ export class TrainSpriteRenderer {
     // ── Lay every car on the actual track ────────────────────────────────────
     // Cars sit at fixed distances behind the head along the route polyline, so
     // they follow corners and never hang off the end of the line: at a
-    // terminal the whole train is kept on the track.
+    // terminal the whole train is kept on the track. On a ring the distances
+    // wrap round instead.
     const geo = this.engine.getTrainRouteGeometry(state.id);
     const front = HEAD_W / 2 / GRID_SIZE;
     const back = trainLengthBehindHead(carriageCount);
@@ -234,13 +308,15 @@ export class TrainSpriteRenderer {
     if (geo && geo.total > 0) {
       const d = geo.direction;
       let head = geo.headDist;
-      if (geo.total >= front + back) {
+      if (!geo.loop && geo.total >= front + back) {
         const lo = d === 1 ? back : front;
         const hi = d === 1 ? geo.total - front : geo.total - back;
         head = Math.max(lo, Math.min(hi, head));
       }
       for (const off of offsets) {
-        const p = pointAt(geo.points, geo.cum, head - d * off);
+        let at = head - d * off;
+        if (geo.loop) at = ((at % geo.total) + geo.total) % geo.total;
+        const p = pointAt(geo.points, geo.cum, at);
         placed.push({
           x: p.x * GRID_SIZE,
           y: p.y * GRID_SIZE,
@@ -251,39 +327,24 @@ export class TrainSpriteRenderer {
       for (const off of offsets) placed.push({ x: px - off * GRID_SIZE, y: py, angle: 0 });
     }
 
-    const layer = new Container();
-    {
-      const hg = new Graphics();
-      drawMetroTop(hg, HEAD_W, HEAD_H, toColorNum(headColor), { head: true, tail: carriageCount === 0 });
-      hg.x = placed[0].x;
-      hg.y = placed[0].y;
-      hg.rotation = placed[0].angle;
-      layer.addChild(hg);
-    }
-    for (let i = 0; i < carriageCount; i++) {
-      const carriageColor = styles?.carriageColors[i] ?? colorStr;
-      const cg = new Graphics();
-      drawMetroTop(cg, CARRIAGE_W, CARRIAGE_H, toColorNum(carriageColor), {
-        gangway: true,
-        tail: i === carriageCount - 1,
-      });
-      cg.x = placed[i + 1].x;
-      cg.y = placed[i + 1].y;
-      cg.rotation = placed[i + 1].angle;
-      // Stack front-to-back so each gangway tucks under the car in front of it
-      layer.addChildAt(cg, 0);
+    // cars.children: [last carriage, …, first carriage, head]
+    const cars = view.cars.children;
+    for (let k = 0; k < cars.length; k++) {
+      const p = placed[cars.length - 1 - k];
+      if (!p) continue;
+      cars[k].x = p.x;
+      cars[k].y = p.y;
+      cars[k].rotation = p.angle;
     }
     // Labels / coin effects follow the drawn head
     px = placed[0].x;
     py = placed[0].y;
 
-    trainContainer.addChild(g);
-    trainContainer.addChild(layer);
-
     // ── Passenger dots animating during loading ──────────────────────────────
+    const dotG = view.dots;
+    dotG.clear();
     if (state.status === 'loading') {
       const animT = this.passengerAnimTimers.get(state.id) ?? 0;
-      const dotG = new Graphics();
       const dotCount = 5;
       for (let i = 0; i < dotCount; i++) {
         const phase = ((animT * 1.5) + (i / dotCount)) % 1;
@@ -293,66 +354,56 @@ export class TrainSpriteRenderer {
         const dotY = py + Math.sin(angle) * r - 8;
         drawCoin(dotG, dotX, dotY - 4, 3, Math.abs(Math.cos(animT * 6 + i)), 0.95 - phase * 0.5);
       }
-      trainContainer.addChild(dotG);
     }
 
     // ── Status label when stopped or loading ─────────────────────────────────
-    if (state.status !== 'running') {
-      const labelText = state.status === 'loading' ? 'LOADING' : 'STOPPED';
-      const labelColor = state.status === 'loading' ? PAL.coin : PAL.white;
-      const label = new Text({
-        text: labelText,
-        style: {
-          fontFamily: PIXEL_FONT,
-          fontSize: 7,
-          fill: labelColor,
-          stroke: { color: PAL.outline, width: 3 },
-        },
-      });
-      label.anchor.set(0.5, 1);
+    const label = view.label;
+    label.visible = state.status !== 'running';
+    if (label.visible) {
+      const text = state.status === 'loading' ? 'LOADING' : 'STOPPED';
+      if (label.text !== text) {
+        label.text = text;
+        label.style.fill = state.status === 'loading' ? PAL.coin : PAL.white;
+      }
       label.x = px;
       label.y = py - 22;
-      trainContainer.addChild(label);
     }
-
-    this.container.addChild(trainContainer);
   }
 
-  private renderWaitingDots(sx: number, sy: number, count: number): void {
-    const g = new Graphics();
+  private renderWaitingDots(stationId: string, sx: number, sy: number, count: number): void {
     // Waiting passengers = a row of spinning coins to the right of the station
     const startX = sx + 22;
     const startY = sy - 8;
-    const visibleCount = Math.min(count, 10);
+    const visibleCount = Math.min(Math.max(0, count), 10);
     for (let i = 0; i < visibleCount; i++) {
       const col = i % 5;
       const row = Math.floor(i / 5);
       const x = startX + col * 9;
       const y = startY + row * 11;
       const spin = Math.abs(Math.cos(this.clock * 3 + i * 0.6));
-      drawCoin(g, x, y, 3.8, spin);
+      drawCoin(this.waitingG, x, y, 3.8, spin);
     }
-    this.container.addChild(g);
+    let label = this.waitingLabels.get(stationId);
     if (count > 10) {
-      const label = new Text({
-        text: `x${count}`,
-        style: {
-          fontFamily: PIXEL_FONT,
-          fontSize: 7,
-          fill: PAL.white,
-          stroke: { color: PAL.outline, width: 3 },
-        },
-      });
-      label.anchor.set(0, 0.5);
+      if (!label) {
+        label = new Text({ text: '', style: labelStyle(PAL.white) });
+        label.anchor.set(0, 0.5);
+        this.container.addChild(label);
+        this.waitingLabels.set(stationId, label);
+      }
+      const text = `x${count}`;
+      if (label.text !== text) label.text = text;
       label.x = startX + 5 * 9 - 2;
       label.y = startY;
-      this.container.addChild(label);
+      label.visible = true;
+    } else if (label) {
+      label.visible = false;
     }
   }
 
   destroy(): void {
-    const removed = this.container.removeChildren();
-    for (const child of removed) child.destroy({ children: true });
-    this.container.destroy();
+    this.views.clear();
+    this.waitingLabels.clear();
+    this.container.destroy({ children: true });
   }
 }

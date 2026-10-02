@@ -72,23 +72,138 @@ function splitPath(path: Pt[], cuts: { dist: number; at: Pt }[]): Pt[][] {
   return pieces;
 }
 
-/** Simple chain walk used for lines that contain a loop. */
-function chainWalk(adj: Map<string, string[]>, fallback: string[]): string[] {
-  let start: string | undefined;
-  for (const [id, n] of adj) if (n.length === 1) { start = id; break; }
-  start ??= adj.keys().next().value ?? fallback[0];
-  if (!start) return fallback;
-  const ordered = [start];
-  const seen = new Set([start]);
-  let cur = start;
-  for (;;) {
-    const next = (adj.get(cur) ?? []).find(n => !seen.has(n));
-    if (!next) break;
-    ordered.push(next);
-    seen.add(next);
-    cur = next;
+const edgeKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+
+function walkEdges(walk: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i + 1 < walk.length; i++) out.push(edgeKey(walk[i], walk[i + 1]));
+  return out;
+}
+
+/** Every simple path from `from` to a node in `targets` (capped, for safety
+ *  on big meshes). */
+function simplePaths(adj: Map<string, string[]>, from: string, targets: Set<string>, cap = 2000): string[][] {
+  const out: string[][] = [];
+  const onPath = new Set<string>([from]);
+  const path = [from];
+  let steps = 0;
+  const dfs = (node: string) => {
+    if (out.length >= cap || ++steps > cap * 50) return;
+    for (const n of adj.get(node) ?? []) {
+      if (onPath.has(n)) continue;
+      path.push(n);
+      if (targets.has(n)) out.push([...path]);
+      else {
+        onPath.add(n);
+        dfs(n);
+        onPath.delete(n);
+      }
+      path.pop();
+    }
+  };
+  dfs(from);
+  return out;
+}
+
+/** Shortest path (BFS) between two stations. */
+function shortestPath(adj: Map<string, string[]>, from: string, to: string): string[] | null {
+  const prev = new Map<string, string | null>([[from, null]]);
+  const queue = [from];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    if (cur === to) break;
+    for (const n of adj.get(cur) ?? []) {
+      if (!prev.has(n)) { prev.set(n, cur); queue.push(n); }
+    }
   }
-  return ordered.length >= 2 ? ordered : fallback;
+  if (!prev.has(to)) return null;
+  const out: string[] = [];
+  for (let c: string | null = to; c !== null; c = prev.get(c) ?? null) out.unshift(c);
+  return out;
+}
+
+/** Shortest walk from `start` (entered from `cameFrom`) to any target that
+ *  never turns straight back the way it came — a train cannot U-turn
+ *  between terminals. Stations may repeat (e.g. around a loop and back). */
+function noUturnWalk(
+  adj: Map<string, string[]>, start: string, cameFrom: string, targets: Set<string>,
+): string[] | null {
+  const sk = (node: string, from: string) => `${node}<${from}`;
+  const prev = new Map<string, string | null>([[sk(start, cameFrom), null]]);
+  const queue: [string, string][] = [[start, cameFrom]];
+  while (queue.length) {
+    const [node, from] = queue.shift()!;
+    if (targets.has(node)) {
+      const out: string[] = [];
+      for (let k: string | null = sk(node, from); k !== null; k = prev.get(k) ?? null) out.unshift(k.split('<')[0]);
+      return out;
+    }
+    for (const n of adj.get(node) ?? []) {
+      if (n === from) continue;
+      const k = sk(n, node);
+      if (!prev.has(k)) { prev.set(k, sk(node, from)); queue.push([n, node]); }
+    }
+  }
+  return null;
+}
+
+/**
+ * Routes for a line whose track contains a loop. Every route starts at the
+ * same home station; together they cover every track piece:
+ *  1. terminal-to-terminal paths, picked greedily for new coverage (the two
+ *     sides of a loop become two alternating routes);
+ *  2. anything still unserved (a loop hanging off the line, a lollipop) gets
+ *     a walk that goes out, round the loop and on to a terminal / back home.
+ * A line with no terminals at all (a ring) gets a closed route that trains
+ * run round continuously.
+ */
+function loopRoutes(adj: Map<string, string[]>, leaves: string[], home: string): string[][] {
+  const uncovered = new Set<string>();
+  for (const [a, ns] of adj) for (const b of ns) uncovered.add(edgeKey(a, b));
+  const routes: string[][] = [];
+  const take = (walk: string[]) => {
+    routes.push(walk);
+    for (const e of walkEdges(walk)) uncovered.delete(e);
+  };
+
+  const otherLeaves = new Set(leaves.filter(l => l !== home));
+  if (otherLeaves.size > 0) {
+    const cands = simplePaths(adj, home, otherLeaves);
+    for (;;) {
+      let best: string[] | null = null;
+      let bestGain = 0;
+      for (const c of cands) {
+        const gain = new Set(walkEdges(c).filter(e => uncovered.has(e))).size;
+        if (gain > bestGain || (gain === bestGain && best && gain > 0 && c.length > best.length)) {
+          best = c;
+          bestGain = gain;
+        }
+      }
+      if (!best || bestGain === 0) break;
+      take(best);
+    }
+  }
+
+  const targets = otherLeaves.size > 0 ? otherLeaves : new Set([home]);
+  const dist = new Map<string, number>();
+  for (const id of adj.keys()) dist.set(id, shortestPath(adj, home, id)?.length ?? 1e9);
+  let guard = adj.size * 4 + 8;
+  while (uncovered.size > 0 && guard-- > 0) {
+    // Serve the unserved piece nearest home first
+    let u = '', w = '';
+    let bestD = Infinity;
+    for (const e of uncovered) {
+      const [a, b] = e.split('|');
+      const [near, far] = dist.get(a)! <= dist.get(b)! ? [a, b] : [b, a];
+      if (dist.get(near)! < bestD) { bestD = dist.get(near)!; u = near; w = far; }
+    }
+    const out = shortestPath(adj, home, u);
+    if (!out) { uncovered.clear(); break; }
+    const on = noUturnWalk(adj, w, u, targets) ?? shortestPath(adj, w, [...targets][0]);
+    if (!on) { uncovered.delete(edgeKey(u, w)); continue; }
+    take([...out, ...on]);
+  }
+  return routes.filter(r => r.length >= 2);
 }
 
 /**
@@ -158,10 +273,17 @@ export function buildLineRoutes(
   const edgeCount = seenEdge.size;
   const leaves = [...adj.keys()].filter(id => adj.get(id)!.length === 1);
   const isTree = edgeCount === nodeCount - 1 && leaves.length >= 2;
-  if (!isTree) return { routes: [chainWalk(adj, fallbackIds)], extraPaths };
+  const order = new Map(fallbackIds.map((id, i) => [id, i]));
+  if (!isTree && leaves.length === 0) {
+    // Ring (or rings with no terminal): start at the busiest junction
+    const home = [...adj.keys()].sort((p, q) =>
+      adj.get(q)!.length - adj.get(p)!.length || (order.get(p) ?? 1e9) - (order.get(q) ?? 1e9),
+    )[0];
+    const routes = home ? loopRoutes(adj, leaves, home) : [];
+    return { routes: routes.length ? routes : [fallbackIds], extraPaths };
+  }
 
   // ── 3. Home terminal: the end of the longest unbranched run (the trunk) ──
-  const order = new Map(fallbackIds.map((id, i) => [id, i]));
   const tailLength = (leaf: string) => {
     let prev = leaf;
     let cur = adj.get(leaf)![0];
@@ -177,6 +299,11 @@ export function buildLineRoutes(
   const home = [...leaves].sort((p, q) =>
     tailLength(q) - tailLength(p) || (order.get(p) ?? 1e9) - (order.get(q) ?? 1e9),
   )[0];
+
+  if (!isTree) {
+    const routes = loopRoutes(adj, leaves, home);
+    return { routes: routes.length ? routes : [fallbackIds], extraPaths };
+  }
 
   // ── 4. One route per far terminal, in depth-first order ─────────────────
   const routes: string[][] = [];

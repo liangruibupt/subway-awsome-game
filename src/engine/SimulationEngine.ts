@@ -37,6 +37,8 @@ export interface TrainRouteGeometry {
   total: number;
   headDist: number;    // engine head position along the route
   direction: 1 | -1;
+  /** Circular route: positions wrap round instead of stopping at the ends. */
+  loop: boolean;
 }
 
 interface StationData {
@@ -71,6 +73,13 @@ interface StationPassengerData {
 }
 
 const TRAIN_SPEED = 2;  // grid-units per simulated second (~80 km/h scaled)
+
+/** A route that ends where it starts without turning back on itself — a
+ *  ring line that trains run round continuously. */
+export function isCircular(route: string[]): boolean {
+  const n = route.length;
+  return n >= 4 && route[0] === route[n - 1] && route[1] !== route[n - 2];
+}
 
 export class SimulationEngine {
   private lines = new Map<string, LineData>();
@@ -280,6 +289,7 @@ export class SimulationEngine {
       total: geo.cum[geo.cum.length - 1],
       headDist,
       direction: forward ? 1 : -1,
+      loop: isCircular(this.routeOf(train)),
     };
   }
 
@@ -404,6 +414,19 @@ export class SimulationEngine {
       // Reverse at terminals
       const lastIdx = route.length - 1;
       let reversed = false;
+      if (arrivedAt === lastIdx && train.direction === 1 && isCircular(route)) {
+        // Ring: carry straight on round the loop (next branch if any), no
+        // reversal and no cab change.
+        if (line.routes.length > 1) {
+          train.routeIndex = (train.routeIndex + 1) % line.routes.length;
+          route = this.routeOf(train);
+        }
+        train.currentStationIndex = 0;
+        train.nextStationIndex = 1;
+        train.status = 'stopped';
+        train.dwellTimer = this.dwellTime;
+        return;
+      }
       if (arrivedAt === lastIdx) {
         train.direction = -1;
         reversed = true;
